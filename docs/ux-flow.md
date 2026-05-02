@@ -2,32 +2,70 @@
 
 ## Pasos del flujo guiado
 
+```text
+[setup] -> [families] -> [recommendation] -> [results]
 ```
-[setup] → [families] → [recommendation] → [results]
+
+## 1. Setup
+
+- Nombre del evento.
+- Acción para probar con datos de ejemplo.
+- Si existe un borrador recuperado, el nombre vuelve cargado automáticamente.
+
+## 2. Families
+
+- Formulario para agregar familias.
+- Campos: nombre, integrantes, tipo Adulto/Menor si tiene 1 integrante, monto pagado y nota.
+- Lista de familias cargadas.
+- Edición inline desde cada tarjeta.
+- Eliminación con confirmación visual.
+- Acción “Empezar de nuevo” para borrar el evento actual y su borrador local.
+
+## 3. Recommendation
+
+- Muestra el criterio recomendado con razones.
+- Permite aceptar la recomendación o elegir manualmente.
+- Al confirmar, se guarda si la recomendación fue aceptada o no.
+
+## 4. Results
+
+- Total del evento.
+- Criterio usado.
+- Balances con badges: paga, cobra, no aporta, equilibrado.
+- Transferencias sugeridas.
+- Botón para copiar resumen para WhatsApp.
+- Acción “Nuevo evento” para borrar el evento actual y limpiar el borrador.
+
+## Persistencia local
+
+El evento actual se guarda automáticamente como borrador en `localStorage`, con la clave:
+
+```text
+quien-puso-que:current-draft
 ```
 
-### 1. Setup
-- Nombre del evento (requerido para avanzar)
-- Botón "Probar con datos de ejemplo"
+Se guarda:
 
-### 2. Families
-- Formulario para agregar familias (nombre, integrantes, tipo si es 1, monto pagado)
-- Lista de familias agregadas con opción de eliminar
-- Botón "Ver quién puso qué" disponible con ≥2 familias
+- nombre del evento
+- moneda
+- familias cargadas
+- modo seleccionado
+- modo confirmado
+- si el criterio recomendado fue aceptado o no
+- fecha de última edición
 
-### 3. Recommendation
-- Muestra el modo recomendado con confianza y razones
-- Permite cambiar el modo manualmente
-- Muestra métricas de impacto
-- Botón para confirmar y calcular
+## Recuperación
 
-### 4. Results
-- Total del evento
-- Balances de cada familia con badge de estado
-- Lista de transferencias sugeridas (o mensaje de equilibrio)
-- Botón para copiar resumen en WhatsApp
-- Botón para empezar de nuevo
+La recuperación ocurre solo del lado cliente, después de hidratar la app. Antes de usar un borrador se validan estructura, tipos, familias, modo de reparto y fecha.
 
-## Indicador de progreso
+- Si el borrador tiene criterio confirmado y al menos 2 familias, vuelve a resultados.
+- Si tiene familias pero no criterio confirmado, vuelve a familias.
+- Si solo tiene nombre de evento, vuelve a setup.
 
-Puntos en la parte superior que indican el paso actual.
+## Limitaciones
+
+- El borrador existe solo en el navegador actual.
+- No sincroniza entre dispositivos.
+- Puede perderse si el usuario limpia datos del sitio.
+- En modo incógnito puede durar solo hasta cerrar la sesión.
+- Si `localStorage` no está disponible, la app sigue funcionando sin persistencia.

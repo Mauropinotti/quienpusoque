@@ -5,12 +5,14 @@ import { nanoid } from "nanoid";
 
 import type { Family, SplitMode } from "@/types/family";
 import type { EventData } from "@/types/event";
+import type { LocalEventDraft } from "@/lib/storage/localEventStorage";
 
 import { computeAllEligibility } from "@/lib/calculations/eligibility";
 import { calculateBalances } from "@/lib/calculations/calculateBalances";
 import { calculateTransfers } from "@/lib/calculations/calculateTransfers";
 import { recommendSplitMode } from "@/lib/calculations/recommendSplitMode";
 
+import { useEventDraft } from "@/hooks/useEventDraft";
 import { EventHeader } from "@/components/event/EventHeader";
 import { EventSetupCard } from "@/components/event/EventSetupCard";
 import { FamilyForm } from "@/components/families/FamilyForm";
@@ -22,6 +24,13 @@ import { ResultsSummary } from "@/components/results/ResultsSummary";
 type Step = "setup" | "families" | "recommendation" | "results";
 
 const STEPS: Step[] = ["setup", "families", "recommendation", "results"];
+
+const EMPTY_EVENT_DATA: EventData = {
+  eventName: "",
+  currency: "ARS",
+  splitMode: null,
+  families: [],
+};
 
 const DEMO_FAMILIES: Family[] = [
   {
@@ -64,15 +73,38 @@ const DEMO_FAMILIES: Family[] = [
   },
 ];
 
+function getStepFromDraft(draft: LocalEventDraft): Step {
+  if (draft.splitMode && draft.families.length >= 2) return "results";
+  if (draft.families.length > 0) return "families";
+  return "setup";
+}
+
 export default function HomePage() {
   const [step, setStep] = useState<Step>("setup");
-  const [eventData, setEventData] = useState<EventData>({
-    eventName: "",
-    currency: "ARS",
-    splitMode: null,
-    families: [],
-  });
+  const [eventData, setEventData] = useState<EventData>(EMPTY_EVENT_DATA);
   const [selectedMode, setSelectedMode] = useState<SplitMode>("by-family");
+  const [recommendationAccepted, setRecommendationAccepted] = useState<
+    boolean | null
+  >(null);
+
+  const restoreDraft = useCallback((draft: LocalEventDraft) => {
+    setEventData({
+      eventName: draft.eventName,
+      currency: draft.currency,
+      splitMode: draft.splitMode,
+      families: draft.families,
+    });
+    setSelectedMode(draft.selectedMode);
+    setRecommendationAccepted(draft.recommendationAccepted);
+    setStep(getStepFromDraft(draft));
+  }, []);
+
+  const { clearDraft } = useEventDraft({
+    eventData,
+    selectedMode,
+    recommendationAccepted,
+    onDraftLoaded: restoreDraft,
+  });
 
   const recommendation = useMemo(() => {
     if (eventData.families.length < 2) return null;
@@ -97,6 +129,10 @@ export default function HomePage() {
     };
   }, [eventData, selectedMode]);
 
+  const markDraftChanged = useCallback(() => {
+    setRecommendationAccepted(null);
+  }, []);
+
   const loadDemo = useCallback(() => {
     setEventData((prev) => ({
       ...prev,
@@ -105,51 +141,77 @@ export default function HomePage() {
       families: DEMO_FAMILIES,
     }));
     setSelectedMode("by-family");
+    setRecommendationAccepted(null);
     setStep("families");
   }, []);
 
-  const handleAddFamily = useCallback((data: Omit<Family, "id">) => {
-    const family: Family = { ...data, id: nanoid(8) };
-    setEventData((prev) => ({
-      ...prev,
-      families: [...prev.families, family],
-    }));
-  }, []);
+  const handleAddFamily = useCallback(
+    (data: Omit<Family, "id">) => {
+      const family: Family = { ...data, id: nanoid(8) };
+      setEventData((prev) => ({
+        ...prev,
+        families: [...prev.families, family],
+      }));
+      markDraftChanged();
+    },
+    [markDraftChanged]
+  );
 
-  const handleUpdateFamily = useCallback((updatedFamily: Family) => {
-    setEventData((prev) => ({
-      ...prev,
-      families: prev.families.map((family) =>
-        family.id === updatedFamily.id ? updatedFamily : family
-      ),
-    }));
-  }, []);
+  const handleUpdateFamily = useCallback(
+    (updatedFamily: Family) => {
+      setEventData((prev) => ({
+        ...prev,
+        families: prev.families.map((family) =>
+          family.id === updatedFamily.id ? updatedFamily : family
+        ),
+      }));
+      markDraftChanged();
+    },
+    [markDraftChanged]
+  );
 
-  const handleRemoveFamily = useCallback((id: string) => {
-    setEventData((prev) => ({
-      ...prev,
-      families: prev.families.filter((family) => family.id !== id),
-    }));
-  }, []);
+  const handleRemoveFamily = useCallback(
+    (id: string) => {
+      setEventData((prev) => ({
+        ...prev,
+        families: prev.families.filter((family) => family.id !== id),
+      }));
+      markDraftChanged();
+    },
+    [markDraftChanged]
+  );
 
   const handleShowRecommendation = useCallback(() => {
     if (!recommendation) return;
     setSelectedMode(recommendation.recommendedMode);
+    setRecommendationAccepted(null);
     setStep("recommendation");
   }, [recommendation]);
 
-  const handleConfirmMode = useCallback(() => {
-    setEventData((prev) => ({ ...prev, splitMode: selectedMode }));
-    setStep("results");
-  }, [selectedMode]);
-
-  const handleReset = useCallback(() => {
-    setStep("setup");
-    setEventData({ eventName: "", currency: "ARS", splitMode: null, families: [] });
-    setSelectedMode("by-family");
+  const handleModeChange = useCallback((mode: SplitMode) => {
+    setSelectedMode(mode);
+    setRecommendationAccepted(null);
   }, []);
 
+  const handleConfirmMode = useCallback(() => {
+    setEventData((prev) => ({ ...prev, splitMode: selectedMode }));
+    setRecommendationAccepted(
+      recommendation ? selectedMode === recommendation.recommendedMode : null
+    );
+    setStep("results");
+  }, [recommendation, selectedMode]);
+
+  const handleReset = useCallback(() => {
+    clearDraft();
+    setStep("setup");
+    setEventData(EMPTY_EVENT_DATA);
+    setSelectedMode("by-family");
+    setRecommendationAccepted(null);
+  }, [clearDraft]);
+
   const stepIndex = STEPS.indexOf(step);
+  const hasCurrentDraft =
+    eventData.eventName.trim().length > 0 || eventData.families.length > 0;
 
   return (
     <main className="min-h-screen">
@@ -216,7 +278,7 @@ export default function HomePage() {
             <RecommendationCard
               recommendation={recommendation}
               selectedMode={selectedMode}
-              onModeChange={setSelectedMode}
+              onModeChange={handleModeChange}
               onConfirm={handleConfirmMode}
             />
             <ModeImpactPreview metrics={recommendation.metrics} />
@@ -233,6 +295,20 @@ export default function HomePage() {
             onEditFamilies={() => setStep("families")}
             onReset={handleReset}
           />
+        )}
+
+        {step !== "results" && hasCurrentDraft && (
+          <div className="rounded-lg border border-stone-200 bg-white p-3 text-center">
+            <p className="mb-2 text-xs text-stone-500">
+              Borrador guardado en este navegador.
+            </p>
+            <button
+              onClick={handleReset}
+              className="min-h-11 text-sm font-semibold text-stone-500 transition hover:text-red-700"
+            >
+              Empezar de nuevo
+            </button>
+          </div>
         )}
       </div>
     </main>
