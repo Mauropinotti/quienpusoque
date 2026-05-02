@@ -79,14 +79,19 @@ export default function HomePage() {
   }, [eventData.families]);
 
   const handleConfirmMode = useCallback(() => {
-    const withEligibility = computeAllEligibility(eventData.families);
-    const b = calculateBalances(withEligibility, selectedMode);
-    const t = calculateTransfers(b);
-    setBalances(b);
+    const result = calculateBalances({ ...eventData, splitMode: selectedMode });
+    if (!result.ok) {
+      // Los errores de validación deberían haber sido atrapados antes de llegar aquí,
+      // pero los registramos por si acaso.
+      console.error("Error de cálculo:", result.errors);
+      return;
+    }
+    const t = calculateTransfers(result.data.balances);
+    setBalances(result.data.balances);
     setTransfers(t);
     setEventData((prev) => ({ ...prev, splitMode: selectedMode }));
     setStep("results");
-  }, [eventData.families, selectedMode]);
+  }, [eventData, selectedMode]);
 
   const handleReset = useCallback(() => {
     setStep("setup");

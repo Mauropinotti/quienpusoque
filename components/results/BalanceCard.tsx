@@ -9,14 +9,7 @@ interface BalanceCardProps {
 }
 
 export function BalanceCard({ balance, currency = "ARS" }: BalanceCardProps) {
-  const variant =
-    !balance.isEligibleToPay
-      ? "guest"
-      : balance.balance > 0.01
-      ? "receives"
-      : balance.balance < -0.01
-      ? "pays"
-      : "balanced";
+  const { status } = balance;
 
   const memberLabel =
     balance.eligiblePersons === 1
@@ -29,7 +22,7 @@ export function BalanceCard({ balance, currency = "ARS" }: BalanceCardProps) {
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-stone-800">{balance.name}</span>
-            <Badge variant={variant} />
+            <Badge variant={status} />
           </div>
           {balance.isEligibleToPay && (
             <p className="text-xs text-stone-500 mt-0.5">{memberLabel}</p>
@@ -45,16 +38,16 @@ export function BalanceCard({ balance, currency = "ARS" }: BalanceCardProps) {
               </p>
               <p
                 className={`text-base font-bold mt-0.5 ${
-                  variant === "receives"
+                  status === "receives"
                     ? "text-green-600"
-                    : variant === "pays"
+                    : status === "pays"
                     ? "text-red-600"
                     : "text-blue-600"
                 }`}
               >
-                {variant === "receives" && "+"}
-                {variant === "pays" && "−"}
-                {Math.abs(balance.balance) > 0.01
+                {status === "receives" && "+"}
+                {status === "pays" && "−"}
+                {Math.abs(balance.balance) > 0
                   ? formatCurrency(Math.abs(balance.balance), currency)
                   : "0"}
               </p>

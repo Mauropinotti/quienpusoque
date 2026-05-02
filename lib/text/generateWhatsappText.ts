@@ -25,14 +25,18 @@ export function generateWhatsappText(opts: GenerateOptions): string {
   ];
 
   for (const b of balances) {
-    if (!b.isEligibleToPay) {
+    if (b.status === "guest") {
       lines.push(`• ${b.name}: invitado/a no aportante 🎉`);
       continue;
     }
-    const sign = b.balance > 0.01 ? "cobra" : b.balance < -0.01 ? "paga" : "equilibrado";
-    const emoji = sign === "cobra" ? "✅" : sign === "paga" ? "❌" : "⚖️";
+    const label =
+      b.status === "receives" ? "cobra" :
+      b.status === "pays"     ? "paga"  : "equilibrado";
+    const emoji =
+      b.status === "receives" ? "✅" :
+      b.status === "pays"     ? "❌" : "⚖️";
     lines.push(
-      `• ${b.name}: puso ${formatCurrency(b.paidAmount, currency)}, le tocaba ${formatCurrency(b.expectedShare, currency)} → ${emoji} ${sign === "equilibrado" ? "equilibrado" : formatCurrency(Math.abs(b.balance), currency)}`
+      `• ${b.name}: puso ${formatCurrency(b.paidAmount, currency)}, le tocaba ${formatCurrency(b.expectedShare, currency)} → ${emoji} ${b.status === "balanced" ? "equilibrado" : formatCurrency(Math.abs(b.balance), currency)} ${label !== "equilibrado" ? label : ""}`
     );
   }
 
