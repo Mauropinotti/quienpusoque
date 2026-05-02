@@ -8,23 +8,29 @@ interface ModeImpactPreviewProps {
 export function ModeImpactPreview({ metrics }: ModeImpactPreviewProps) {
   return (
     <div className="grid grid-cols-2 gap-2 text-sm">
-      <MetricBox label="Familias habilitadas" value={String(metrics.eligibleFamilies)} />
-      <MetricBox label="Personas habilitadas" value={String(metrics.totalEligiblePersons)} />
+      <MetricBox
+        label="Familias habilitadas"
+        value={String(metrics.eligibleFamilies)}
+      />
+      <MetricBox
+        label="Personas habilitadas"
+        value={String(metrics.eligiblePersons)}
+      />
       <MetricBox
         label="Promedio integrantes"
-        value={metrics.avgMembersPerEligibleFamily.toFixed(1)}
+        value={metrics.averageFamilySize.toFixed(1)}
       />
       <MetricBox
         label="Impacto promedio"
-        value={formatPercentage(metrics.avgImpactDiff)}
+        value={formatPercentage(metrics.averageImpactBetweenModes)}
       />
       <MetricBox
         label="Impacto máximo"
-        value={formatPercentage(metrics.maxImpactDiff)}
+        value={formatPercentage(metrics.maxImpactBetweenModes)}
       />
       <MetricBox
-        label="Familias grandes"
-        value={formatPercentage(metrics.largeFamiliesRatio)}
+        label="Familias numerosas"
+        value={formatPercentage(metrics.largeFamilyRatio)}
       />
     </div>
   );

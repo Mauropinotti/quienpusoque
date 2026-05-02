@@ -3,14 +3,13 @@ import type { SplitMode } from "./family";
 export type RecommendationConfidence = "low" | "medium" | "high";
 
 export interface RecommendationMetrics {
-  totalFamilies: number;
   eligibleFamilies: number;
-  totalEligiblePersons: number;
-  singleAdultFamiliesRatio: number;
-  largeFamiliesRatio: number;
-  avgMembersPerEligibleFamily: number;
-  avgImpactDiff: number;
-  maxImpactDiff: number;
+  eligiblePersons: number;
+  singleAdultFamilyRatio: number;
+  largeFamilyRatio: number;
+  averageFamilySize: number;
+  averageImpactBetweenModes: number;
+  maxImpactBetweenModes: number;
 }
 
 export interface SplitRecommendation {
