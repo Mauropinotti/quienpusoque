@@ -4,16 +4,22 @@ interface EventHeaderProps {
 
 export function EventHeader({ eventName }: EventHeaderProps) {
   return (
-    <div className="text-center py-6 px-4">
-      <h1 className="text-3xl font-bold text-orange-600 tracking-tight">
+    <header className="px-4 pb-5 pt-7 text-center">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-700">
+        Gastos compartidos
+      </p>
+      <h1 className="mt-2 text-4xl font-black tracking-tight text-stone-950">
         ¿Quién puso qué?
       </h1>
-      {eventName && (
-        <p className="mt-1 text-lg text-stone-600 font-medium">{eventName}</p>
+      {eventName ? (
+        <p className="mt-2 text-base font-semibold text-stone-700">
+          {eventName}
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-stone-500">
+          Para repartir claro después de juntarse.
+        </p>
       )}
-      <p className="mt-2 text-sm text-stone-500">
-        La matemática no perdona, pero reparte justo.
-      </p>
-    </div>
+    </header>
   );
 }

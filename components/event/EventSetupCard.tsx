@@ -1,4 +1,5 @@
 "use client";
+
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -16,11 +17,11 @@ export function EventSetupCard({
 }: EventSetupCardProps) {
   return (
     <Card padding="lg">
-      <h2 className="text-xl font-bold text-stone-800 mb-1">Nuevo evento</h2>
-      <p className="text-sm text-stone-500 mb-4">
-        ¿Cómo se llama la reunión? Asado, cumple, viaje… lo que sea.
+      <h2 className="text-2xl font-black text-stone-950">Crear evento</h2>
+      <p className="mt-2 text-sm leading-6 text-stone-600">
+        Poné un nombre simple. Después cargás quién vino, cuánto puso y listo.
       </p>
-      <div className="flex flex-col gap-4">
+      <div className="mt-5 flex flex-col gap-4">
         <Input
           label="Nombre del evento"
           placeholder="Ej: Asado del sábado"
@@ -28,7 +29,7 @@ export function EventSetupCard({
           onChange={(e) => onEventNameChange(e.target.value)}
         />
         <Button fullWidth size="lg" onClick={onNext} disabled={!eventName.trim()}>
-          Cargar familias →
+          Cargar familias
         </Button>
       </div>
     </Card>

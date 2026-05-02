@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 
@@ -10,15 +11,19 @@ export function CopyResultButton({ getText }: CopyResultButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    const text = getText();
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(getText());
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
   return (
-    <Button fullWidth size="lg" variant={copied ? "secondary" : "primary"} onClick={handleCopy}>
-      {copied ? "✓ ¡Copiado! Pegalo en WhatsApp" : "📋 Copiar resumen para WhatsApp"}
+    <Button
+      fullWidth
+      size="lg"
+      variant={copied ? "secondary" : "primary"}
+      onClick={handleCopy}
+    >
+      {copied ? "Copiado para WhatsApp" : "Copiar resumen para WhatsApp"}
     </Button>
   );
 }

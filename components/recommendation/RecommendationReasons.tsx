@@ -4,16 +4,17 @@ interface RecommendationReasonsProps {
 
 export function RecommendationReasons({ reasons }: RecommendationReasonsProps) {
   if (reasons.length === 0) return null;
+
   return (
-    <div className="bg-orange-50 rounded-xl px-4 py-3">
-      <p className="text-xs font-semibold text-orange-700 mb-2 uppercase tracking-wide">
-        ¿Por qué esta recomendación?
+    <div className="mt-4 rounded-lg border border-orange-100 bg-white px-4 py-3">
+      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-orange-700">
+        Por qué
       </p>
-      <ul className="space-y-1">
-        {reasons.map((r, i) => (
-          <li key={i} className="text-sm text-stone-700 flex gap-2">
-            <span className="text-orange-400 shrink-0">→</span>
-            {r}
+      <ul className="space-y-2">
+        {reasons.map((reason, index) => (
+          <li key={index} className="flex gap-2 text-sm leading-5 text-stone-700">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" />
+            <span>{reason}</span>
           </li>
         ))}
       </ul>

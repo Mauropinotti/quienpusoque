@@ -3,6 +3,7 @@ import type { SplitMode } from "@/types/family";
 import { BalanceCard } from "./BalanceCard";
 import { TransfersList } from "./TransfersList";
 import { CopyResultButton } from "./CopyResultButton";
+import { Button } from "@/components/ui/Button";
 import { generateWhatsappText } from "@/lib/text/generateWhatsappText";
 import { formatCurrency } from "@/lib/formatting/formatCurrency";
 
@@ -12,6 +13,7 @@ interface ResultsSummaryProps {
   splitMode: SplitMode;
   balances: FamilyBalance[];
   transfers: Transfer[];
+  onEditFamilies: () => void;
   onReset: () => void;
 }
 
@@ -21,27 +23,41 @@ export function ResultsSummary({
   splitMode,
   balances,
   transfers,
+  onEditFamilies,
   onReset,
 }: ResultsSummaryProps) {
-  const total = balances.reduce((s, b) => s + b.paidAmount, 0);
+  const total = balances.reduce((sum, balance) => sum + balance.paidAmount, 0);
   const modeLabel = splitMode === "by-family" ? "por familia" : "por persona";
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="text-center">
-        <p className="text-sm text-stone-500">Total del evento</p>
-        <p className="text-4xl font-extrabold text-orange-600">
+      <section className="rounded-lg border border-orange-200 bg-orange-50 p-5 text-center">
+        <p className="text-sm font-medium text-orange-800">Total del evento</p>
+        <p className="mt-1 text-4xl font-black text-orange-800">
           {formatCurrency(total, currency)}
         </p>
-        <p className="text-xs text-stone-400 mt-1">Reparto {modeLabel}</p>
+        <p className="mt-2 text-sm text-orange-900">Reparto {modeLabel}</p>
+      </section>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="secondary" fullWidth onClick={onEditFamilies}>
+          Editar familias
+        </Button>
+        <Button variant="ghost" fullWidth onClick={onReset}>
+          Nuevo evento
+        </Button>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h3 className="font-semibold text-stone-700">Balances</h3>
-        {balances.map((b) => (
-          <BalanceCard key={b.familyId} balance={b} currency={currency} />
+      <section className="flex flex-col gap-2">
+        <h3 className="text-lg font-bold text-stone-900">Balances</h3>
+        {balances.map((balance) => (
+          <BalanceCard
+            key={balance.familyId}
+            balance={balance}
+            currency={currency}
+          />
         ))}
-      </div>
+      </section>
 
       <TransfersList transfers={transfers} currency={currency} />
 
@@ -56,17 +72,6 @@ export function ResultsSummary({
           })
         }
       />
-
-      <button
-        onClick={onReset}
-        className="text-sm text-stone-400 hover:text-stone-600 text-center transition-colors"
-      >
-        ← Empezar de nuevo
-      </button>
-
-      <p className="text-center text-xs text-stone-300 pb-4">
-        Listo, ya pueden seguir comiendo tranquilos. 🥩
-      </p>
     </div>
   );
 }

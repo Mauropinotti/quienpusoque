@@ -10,53 +10,75 @@ interface BalanceCardProps {
 
 export function BalanceCard({ balance, currency = "ARS" }: BalanceCardProps) {
   const { status } = balance;
-
   const memberLabel =
     balance.eligiblePersons === 1
       ? "1 persona"
       : `${balance.eligiblePersons} personas`;
 
   return (
-    <Card padding="sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-stone-800">{balance.name}</span>
+    <Card padding="md">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="truncate text-base font-bold text-stone-900">
+              {balance.name}
+            </h4>
             <Badge variant={status} />
           </div>
-          {balance.isEligibleToPay && (
-            <p className="text-xs text-stone-500 mt-0.5">{memberLabel}</p>
+          {balance.isEligibleToPay ? (
+            <p className="mt-1 text-sm text-stone-500">{memberLabel}</p>
+          ) : (
+            <p className="mt-1 text-sm text-amber-700">
+              No entra en el reparto.
+            </p>
           )}
         </div>
-        <div className="text-right shrink-0">
+
+        <div className="shrink-0 text-right">
           {balance.isEligibleToPay ? (
             <>
-              <p className="text-xs text-stone-500">Puso / Le tocaba</p>
-              <p className="text-sm text-stone-700">
-                {formatCurrency(balance.paidAmount, currency)} /{" "}
-                {formatCurrency(balance.expectedShare, currency)}
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">
+                Diferencia
               </p>
               <p
-                className={`text-base font-bold mt-0.5 ${
+                className={[
+                  "text-xl font-black",
                   status === "receives"
-                    ? "text-green-600"
+                    ? "text-emerald-700"
                     : status === "pays"
-                    ? "text-red-600"
-                    : "text-blue-600"
-                }`}
+                      ? "text-red-700"
+                      : "text-sky-700",
+                ].join(" ")}
               >
                 {status === "receives" && "+"}
-                {status === "pays" && "−"}
+                {status === "pays" && "-"}
                 {Math.abs(balance.balance) > 0
                   ? formatCurrency(Math.abs(balance.balance), currency)
-                  : "0"}
+                  : "$0"}
               </p>
             </>
           ) : (
-            <p className="text-sm text-amber-600 font-medium">No aporta</p>
+            <p className="text-base font-bold text-amber-700">No aporta</p>
           )}
         </div>
       </div>
+
+      {balance.isEligibleToPay && (
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-stone-50 p-3">
+          <div>
+            <p className="text-xs text-stone-500">Puso</p>
+            <p className="font-bold text-stone-900">
+              {formatCurrency(balance.paidAmount, currency)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-stone-500">Le tocaba</p>
+            <p className="font-bold text-stone-900">
+              {formatCurrency(balance.expectedShare, currency)}
+            </p>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

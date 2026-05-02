@@ -12,17 +12,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-orange-500 hover:bg-orange-600 text-white shadow-sm active:scale-95",
+    "bg-orange-600 hover:bg-orange-700 text-white shadow-sm active:scale-[0.98]",
   secondary:
-    "bg-white hover:bg-orange-50 text-orange-600 border border-orange-300 active:scale-95",
-  ghost: "bg-transparent hover:bg-orange-50 text-orange-600 active:scale-95",
-  danger: "bg-red-500 hover:bg-red-600 text-white active:scale-95",
+    "bg-white hover:bg-orange-50 text-orange-700 border border-orange-200 active:scale-[0.98]",
+  ghost: "bg-transparent hover:bg-orange-50 text-orange-700 active:scale-[0.98]",
+  danger: "bg-red-600 hover:bg-red-700 text-white active:scale-[0.98]",
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2.5 text-base",
-  lg: "px-6 py-3.5 text-lg font-semibold",
+  sm: "px-3 py-2 text-sm",
+  md: "px-4 py-3 text-base",
+  lg: "px-5 py-4 text-base font-semibold",
 };
 
 export function Button({
@@ -37,7 +37,7 @@ export function Button({
     <button
       {...props}
       className={[
-        "rounded-2xl font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
+        "min-h-11 rounded-lg font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
         variantClasses[variant],
         sizeClasses[size],
         fullWidth ? "w-full" : "",

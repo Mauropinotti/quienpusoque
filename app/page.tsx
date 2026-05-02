@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { nanoid } from "nanoid";
 
 import type { Family, SplitMode } from "@/types/family";
 import type { EventData } from "@/types/event";
-import type { FamilyBalance, Transfer } from "@/types/calculation";
-import type { SplitRecommendation } from "@/types/recommendation";
 
 import { computeAllEligibility } from "@/lib/calculations/eligibility";
 import { calculateBalances } from "@/lib/calculations/calculateBalances";
@@ -26,11 +24,44 @@ type Step = "setup" | "families" | "recommendation" | "results";
 const STEPS: Step[] = ["setup", "families", "recommendation", "results"];
 
 const DEMO_FAMILIES: Family[] = [
-  { id: "1", name: "Los García", members: 4, singleMemberType: null, paidAmount: 8000 },
-  { id: "2", name: "Los Rodríguez", members: 2, singleMemberType: null, paidAmount: 3000 },
-  { id: "3", name: "Los López", members: 1, singleMemberType: "adult", paidAmount: 0 },
-  { id: "4", name: "Los Martínez", members: 1, singleMemberType: "minor", paidAmount: 0 },
-  { id: "5", name: "Los Fernández", members: 3, singleMemberType: null, paidAmount: 5000 },
+  {
+    id: "1",
+    name: "Los García",
+    members: 4,
+    singleMemberType: null,
+    paidAmount: 8000,
+    notes: "Carne y carbón",
+  },
+  {
+    id: "2",
+    name: "Los Rodríguez",
+    members: 2,
+    singleMemberType: null,
+    paidAmount: 3000,
+    notes: "Bebidas",
+  },
+  {
+    id: "3",
+    name: "Los López",
+    members: 1,
+    singleMemberType: "adult",
+    paidAmount: 0,
+  },
+  {
+    id: "4",
+    name: "Los Martínez",
+    members: 1,
+    singleMemberType: "minor",
+    paidAmount: 0,
+  },
+  {
+    id: "5",
+    name: "Los Fernández",
+    members: 3,
+    singleMemberType: null,
+    paidAmount: 5000,
+    notes: "Ensaladas",
+  },
 ];
 
 export default function HomePage() {
@@ -41,17 +72,39 @@ export default function HomePage() {
     splitMode: null,
     families: [],
   });
-  const [recommendation, setRecommendation] = useState<SplitRecommendation | null>(null);
   const [selectedMode, setSelectedMode] = useState<SplitMode>("by-family");
-  const [balances, setBalances] = useState<FamilyBalance[]>([]);
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
+
+  const recommendation = useMemo(() => {
+    if (eventData.families.length < 2) return null;
+    return recommendSplitMode(computeAllEligibility(eventData.families));
+  }, [eventData.families]);
+
+  const calculation = useMemo(() => {
+    if (eventData.families.length < 2) return null;
+
+    const balancesResult = calculateBalances({
+      ...eventData,
+      splitMode: selectedMode,
+    });
+
+    if (!balancesResult.ok) return null;
+
+    const { transfers } = calculateTransfers(balancesResult.data.balances);
+
+    return {
+      balances: balancesResult.data.balances,
+      transfers,
+    };
+  }, [eventData, selectedMode]);
 
   const loadDemo = useCallback(() => {
     setEventData((prev) => ({
       ...prev,
       eventName: "Asado del sábado",
+      splitMode: null,
       families: DEMO_FAMILIES,
     }));
+    setSelectedMode("by-family");
     setStep("families");
   }, []);
 
@@ -63,67 +116,62 @@ export default function HomePage() {
     }));
   }, []);
 
-  const handleRemoveFamily = useCallback((id: string) => {
+  const handleUpdateFamily = useCallback((updatedFamily: Family) => {
     setEventData((prev) => ({
       ...prev,
-      families: prev.families.filter((f) => f.id !== id),
+      families: prev.families.map((family) =>
+        family.id === updatedFamily.id ? updatedFamily : family
+      ),
     }));
   }, []);
 
-  const handleCalculate = useCallback(() => {
-    const withEligibility = computeAllEligibility(eventData.families);
-    const rec = recommendSplitMode(withEligibility);
-    setRecommendation(rec);
-    setSelectedMode(rec.recommendedMode);
+  const handleRemoveFamily = useCallback((id: string) => {
+    setEventData((prev) => ({
+      ...prev,
+      families: prev.families.filter((family) => family.id !== id),
+    }));
+  }, []);
+
+  const handleShowRecommendation = useCallback(() => {
+    if (!recommendation) return;
+    setSelectedMode(recommendation.recommendedMode);
     setStep("recommendation");
-  }, [eventData.families]);
+  }, [recommendation]);
 
   const handleConfirmMode = useCallback(() => {
-    const result = calculateBalances({ ...eventData, splitMode: selectedMode });
-    if (!result.ok) {
-      // Los errores de validación deberían haber sido atrapados antes de llegar aquí,
-      // pero los registramos por si acaso.
-      console.error("Error de cálculo:", result.errors);
-      return;
-    }
-    const { transfers } = calculateTransfers(result.data.balances);
-    setBalances(result.data.balances);
-    setTransfers(transfers);
     setEventData((prev) => ({ ...prev, splitMode: selectedMode }));
     setStep("results");
-  }, [eventData, selectedMode]);
+  }, [selectedMode]);
 
   const handleReset = useCallback(() => {
     setStep("setup");
     setEventData({ eventName: "", currency: "ARS", splitMode: null, families: [] });
-    setRecommendation(null);
-    setBalances([]);
-    setTransfers([]);
+    setSelectedMode("by-family");
   }, []);
 
   const stepIndex = STEPS.indexOf(step);
 
   return (
-    <main className="min-h-screen flex flex-col">
+    <main className="min-h-screen">
       <EventHeader eventName={eventData.eventName} />
 
-      {/* Step progress dots */}
-      <div className="flex justify-center gap-2 pb-4 px-4">
-        {STEPS.map((s, i) => (
+      <div className="mx-auto flex max-w-lg justify-center gap-2 px-4 pb-4">
+        {STEPS.map((currentStep, index) => (
           <div
-            key={s}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              s === step
-                ? "w-8 bg-orange-500"
-                : i < stepIndex
-                ? "w-2 bg-orange-300"
-                : "w-2 bg-stone-200"
-            }`}
+            key={currentStep}
+            className={[
+              "h-2 rounded-full transition-all duration-300",
+              currentStep === step
+                ? "w-8 bg-orange-600"
+                : index < stepIndex
+                  ? "w-3 bg-orange-300"
+                  : "w-3 bg-stone-200",
+            ].join(" ")}
           />
         ))}
       </div>
 
-      <div className="flex-1 px-4 pb-8 max-w-lg mx-auto w-full flex flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 px-4 pb-8">
         {step === "setup" && (
           <>
             <EventSetupCard
@@ -135,49 +183,36 @@ export default function HomePage() {
             />
             <button
               onClick={loadDemo}
-              className="text-sm text-stone-400 hover:text-orange-500 text-center transition-colors"
+              className="min-h-11 rounded-lg text-center text-sm font-medium text-stone-500 transition-colors hover:text-orange-700"
             >
-              Probar con datos de ejemplo →
+              Probar con datos de ejemplo
             </button>
           </>
         )}
 
         {step === "families" && (
           <>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setStep("setup")}
-                className="text-stone-400 hover:text-stone-600 text-xl"
-              >
-                ←
-              </button>
-              <h2 className="text-lg font-bold text-stone-800">
-                {eventData.eventName}
-              </h2>
-            </div>
-            <FamilyForm onAdd={handleAddFamily} />
+            <StepTitle
+              title={eventData.eventName}
+              onBack={() => setStep("setup")}
+            />
+            <FamilyForm onSubmit={handleAddFamily} />
             <FamilyList
               families={eventData.families}
               currency={eventData.currency}
               onRemove={handleRemoveFamily}
-              onCalculate={handleCalculate}
+              onUpdate={handleUpdateFamily}
+              onCalculate={handleShowRecommendation}
             />
           </>
         )}
 
         {step === "recommendation" && recommendation && (
           <>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setStep("families")}
-                className="text-stone-400 hover:text-stone-600 text-xl"
-              >
-                ←
-              </button>
-              <h2 className="text-lg font-bold text-stone-800">
-                {eventData.eventName}
-              </h2>
-            </div>
+            <StepTitle
+              title={eventData.eventName}
+              onBack={() => setStep("families")}
+            />
             <RecommendationCard
               recommendation={recommendation}
               selectedMode={selectedMode}
@@ -188,17 +223,41 @@ export default function HomePage() {
           </>
         )}
 
-        {step === "results" && eventData.splitMode && (
+        {step === "results" && eventData.splitMode && calculation && (
           <ResultsSummary
             eventName={eventData.eventName}
             currency={eventData.currency}
             splitMode={eventData.splitMode}
-            balances={balances}
-            transfers={transfers}
+            balances={calculation.balances}
+            transfers={calculation.transfers}
+            onEditFamilies={() => setStep("families")}
             onReset={handleReset}
           />
         )}
       </div>
     </main>
+  );
+}
+
+function StepTitle({
+  title,
+  onBack,
+}: {
+  title: string;
+  onBack: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={onBack}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-2xl text-stone-500 transition hover:bg-white hover:text-stone-800"
+        aria-label="Volver"
+      >
+        ‹
+      </button>
+      <h2 className="min-w-0 truncate text-lg font-bold text-stone-900">
+        {title}
+      </h2>
+    </div>
   );
 }
