@@ -101,25 +101,69 @@ El campo `status` en `FamilyBalance` es canónico. Los componentes lo usan direc
 
 ---
 
-## Redondeo
+## Redondeo en balances
 
 Todas las cuotas y balances se redondean a 2 decimales con `Math.round(n * 100) / 100`.
 
-En grupos grandes con montos no divisibles puede quedar una diferencia de ±$0.01 por familia (el "problema del centavo"). Esta diferencia es cosmética y no afecta las transferencias.
+En grupos con montos no divisibles puede quedar hasta ±$0.01 por familia entre lo que deberían sumar cuotas y el total real. Es el "problema del centavo", cosmético e inevitable con aritmética decimal finita.
 
 ---
 
-## Transferencias (algoritmo greedy)
+## Transferencias (`calculateTransfers`)
 
-Ver `calculateTransfers.ts`.
+```ts
+calculateTransfers(balances: FamilyBalance[]): TransferResult
+```
 
-1. Separar deudores (`balance < 0`) y acreedores (`balance > 0`).
-2. Ordenar ambos grupos de mayor a menor (por valor absoluto).
-3. Emparejar el deudor más grande con el acreedor más grande.
-4. Registrar transferencia por `min(deuda, crédito)`.
-5. Avanzar al siguiente cuando uno se agota.
+### Resultado
 
-Esto minimiza la cantidad de transferencias necesarias.
+```ts
+interface TransferResult {
+  transfers: Transfer[];       // lista de pagos a realizar
+  totalOwed: number;           // deuda total en pesos enteros
+  totalTransferred: number;    // suma de los montos generados
+  roundingDiscrepancy: number; // diferencia por redondeo (≤ N−1 pesos)
+}
+```
+
+### Algoritmo
+
+**Entrada:** `FamilyBalance[]` con campo `status` canónico.
+
+1. **Filtrar** por `status === "pays"` (deudores) y `status === "receives"` (acreedores).
+   Familias con `status === "guest"` o `"balanced"` nunca entran.
+
+2. **Convertir a pesos enteros** con `Math.round`:
+   - Debtor: `Math.round(Math.abs(balance))`
+   - Creditor: `Math.round(balance)`
+   Descartar partes con monto < 1 peso (ruido de redondeo sub-peso).
+
+3. **Ordenar** ambos grupos de mayor a menor.
+   Desempate secundario por nombre (alfabético ascendente) → **determinismo garantizado**.
+
+4. **Emparejamiento greedy secuencial:**
+   ```
+   mientras haya deudores y acreedores:
+     amount = min(debtor.remaining, creditor.remaining)
+     registrar transferencia(debtor → creditor, amount)
+     debtor.remaining  -= amount
+     creditor.remaining -= amount
+     avanzar el puntero del lado que llegó a 0
+   ```
+
+5. **Verificar** `roundingDiscrepancy = |totalOwed − totalExpected|`.
+
+### Complejidad y optimalidad
+
+El algoritmo produce **a lo sumo N + M − 1 transferencias** (N = deudores, M = acreedores), que es el mínimo demostrable para emparejamiento secuencial.
+
+Toda la aritmética interna opera en enteros (pesos enteros) → sin deriva de punto flotante durante el loop.
+
+### Redondeo en transferencias
+
+Los montos de cada transferencia son pesos enteros. La diferencia total entre `totalOwed` y `totalTransferred` es cero — el algoritmo consume exactamente lo que debe cada deudor.
+
+El `roundingDiscrepancy` refleja la diferencia entre el lado deudor y el acreedor **antes del loop**, producida por el redondeo de balances en `calculateBalances`. Máximo teórico: N − 1 pesos, donde N es el número de partes involucradas. En la práctica es 0 o 1 peso para grupos habituales.
 
 ---
 

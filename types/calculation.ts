@@ -29,7 +29,7 @@ export interface FamilyBalance {
   expectedShare: number;
   /** paidAmount - expectedShare. Positive → cobra; negative → paga; 0 → equilibrado. */
   balance: number;
-  /** Derived from balance + isEligibleToPay. Canónico, no derivar en componentes. */
+  /** Derivado de balance + isEligibleToPay. Canónico: no reinterpretar en componentes. */
   status: BalanceStatus;
   isEligibleToPay: boolean;
   eligiblePersons: number;
@@ -54,5 +54,20 @@ export interface Transfer {
   fromFamilyName: string;
   toFamilyId: string;
   toFamilyName: string;
+  /** Monto en pesos enteros. */
   amount: number;
+}
+
+export interface TransferResult {
+  transfers: Transfer[];
+  /** Suma de deudas en pesos enteros (sum de |balance| de los que pagan). */
+  totalOwed: number;
+  /** Suma de los montos de todas las transferencias generadas. */
+  totalTransferred: number;
+  /**
+   * Diferencia en pesos enteros entre totalOwed y total acreditado esperado.
+   * Causada por el redondeo previo en calculateBalances.
+   * Máximo: número de partes − 1 pesos.
+   */
+  roundingDiscrepancy: number;
 }

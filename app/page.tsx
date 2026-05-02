@@ -86,9 +86,9 @@ export default function HomePage() {
       console.error("Error de cálculo:", result.errors);
       return;
     }
-    const t = calculateTransfers(result.data.balances);
+    const { transfers } = calculateTransfers(result.data.balances);
     setBalances(result.data.balances);
-    setTransfers(t);
+    setTransfers(transfers);
     setEventData((prev) => ({ ...prev, splitMode: selectedMode }));
     setStep("results");
   }, [eventData, selectedMode]);
