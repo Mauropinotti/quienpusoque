@@ -87,7 +87,13 @@ El MVP guarda solo el borrador actual:
 quien-puso-que:current-draft
 ```
 
-Se guarda nombre, familias, modo seleccionado, modo confirmado, aceptación de recomendación y fecha de última edición.
+Se guarda nombre, familias, modo seleccionado, modo confirmado, aceptación de recomendación, fecha de creación y fecha de última edición.
+
+El historial de eventos cerrados usa:
+
+```text
+quien-puso-que:closed-events
+```
 
 Reglas:
 
@@ -102,15 +108,15 @@ Evento actual en edición. Puede estar incompleto. Sirve para no perder datos al
 
 ## Evento cerrado
 
-Evento final confirmado para historial local futuro. No está implementado todavía. Si se menciona, debe ser como roadmap.
+Evento final confirmado guardado en historial local. Incluye snapshots de familias, balances, transferencias y recomendación.
 
 ## Restricciones del MVP
 
 - No backend.
 - No login.
 - No base de datos.
-- No historial cerrado todavía.
 - No PDF todavía.
+- No subida de foto todavía.
 - No sincronización.
 
 ## Qué no debe hacer un agente

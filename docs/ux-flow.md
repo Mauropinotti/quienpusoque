@@ -78,6 +78,7 @@ UI:
 - criterio usado
 - balances
 - transferencias sugeridas
+- botón `Guardar evento cerrado`
 - botón para copiar resumen para WhatsApp
 - botón `Editar familias`
 - botón `Nuevo evento`
@@ -111,6 +112,7 @@ Datos:
 - modo seleccionado
 - modo confirmado
 - aceptación de recomendación
+- fecha de creación
 - fecha de última edición
 
 La lectura se hace solo del lado cliente, después de hydration.
@@ -142,14 +144,30 @@ Evento en edición. Puede estar incompleto. Existe para no perder datos al recar
 
 ## Evento cerrado
 
-Evento final confirmado para historial local. Todavía no está implementado.
+Evento final confirmado para historial local. Es una foto del resultado calculado, separada del borrador actual.
 
-Cuando exista, no debe pisar el borrador actual: serán conceptos separados.
+Se guarda en:
+
+```text
+quien-puso-que:closed-events
+```
+
+Guardar un evento cerrado no borra automáticamente el borrador. El usuario puede seguir editando o empezar uno nuevo.
+
+## Historial local
+
+El historial se muestra en el inicio de la app. Cada tarjeta permite:
+
+- ver total, fecha, criterio y cantidad de familias
+- desplegar transferencias
+- borrar el evento cerrado con confirmación visual
+
+Si `localStorage` está vacío, se muestra un estado vacío y el flujo principal sigue igual.
 
 ## Limitaciones UX actuales
 
-- No hay historial de eventos cerrados.
-- No hay confirmación de cierre final.
+- El historial solo existe en el navegador actual.
 - No hay exportación PDF.
+- No hay subida de foto.
 - No hay sincronización entre dispositivos.
 - No hay modo offline formal, aunque el borrador local ayuda si la página ya cargó.

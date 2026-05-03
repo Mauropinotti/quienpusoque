@@ -107,6 +107,12 @@ El borrador actual se guarda en:
 quien-puso-que:current-draft
 ```
 
+Los eventos cerrados se guardan en:
+
+```text
+quien-puso-que:closed-events
+```
+
 Implementación:
 
 - `lib/storage/localEventStorage.ts`: lee, valida, guarda y borra.
@@ -124,7 +130,7 @@ Reglas:
 
 Un **evento borrador** es el evento actual en edición. Puede estar en setup, families, recommendation o results. Se guarda para no perder datos al recargar.
 
-Un **evento cerrado** será una versión final confirmada para historial local. Todavía no está implementado. No lo documentes como funcionalidad existente ni crees UI falsa para eso.
+Un **evento cerrado** es una versión final confirmada para historial local. Guarda snapshots de familias, balances, transferencias y recomendación. No debe pisar el borrador actual.
 
 ## Restricciones del MVP
 
@@ -135,6 +141,7 @@ Un **evento cerrado** será una versión final confirmada para historial local. 
 - No sincronización entre dispositivos.
 - No librerías nuevas sin una razón fuerte.
 - No ticket PDF todavía.
+- No subida de fotos todavía.
 
 ## Qué no debe hacer un agente
 

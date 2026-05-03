@@ -9,6 +9,7 @@ export interface LocalEventDraft {
   version: typeof DRAFT_VERSION;
   eventName: string;
   currency: string;
+  createdAt: string;
   families: Family[];
   selectedMode: SplitMode;
   splitMode: SplitMode | null;
@@ -20,6 +21,7 @@ export interface SaveEventDraftInput {
   eventData: EventData;
   selectedMode: SplitMode;
   recommendationAccepted: boolean | null;
+  createdAt: string;
 }
 
 function canUseLocalStorage(): boolean {
@@ -73,6 +75,7 @@ function parseDraft(value: unknown): LocalEventDraft | null {
     version,
     eventName,
     currency,
+    createdAt,
     families,
     selectedMode,
     splitMode,
@@ -95,11 +98,18 @@ function parseDraft(value: unknown): LocalEventDraft | null {
   if (typeof updatedAt !== "string" || Number.isNaN(Date.parse(updatedAt))) {
     return null;
   }
+  if (
+    createdAt !== undefined &&
+    (typeof createdAt !== "string" || Number.isNaN(Date.parse(createdAt)))
+  ) {
+    return null;
+  }
 
   return {
     version: DRAFT_VERSION,
     eventName,
     currency,
+    createdAt: typeof createdAt === "string" ? createdAt : updatedAt,
     families,
     selectedMode,
     splitMode,
@@ -124,6 +134,7 @@ export function saveCurrentEventDraft({
   eventData,
   selectedMode,
   recommendationAccepted,
+  createdAt,
 }: SaveEventDraftInput): LocalEventDraft | null {
   if (!canUseLocalStorage()) return null;
 
@@ -131,6 +142,7 @@ export function saveCurrentEventDraft({
     version: DRAFT_VERSION,
     eventName: eventData.eventName,
     currency: eventData.currency,
+    createdAt,
     families: eventData.families,
     selectedMode,
     splitMode: eventData.splitMode,

@@ -132,17 +132,38 @@ Se guarda:
 - modo seleccionado
 - modo confirmado, si existe
 - si se aceptó o no la recomendación
+- fecha de creación
 - fecha de última edición
 
 La recuperación ocurre solo del lado cliente y valida datos antes de usarlos. Si `localStorage` no está disponible, la app sigue funcionando sin persistencia.
 
 ## Historial local de eventos cerrados
 
-Todavía no está implementado.
+El historial local guarda eventos ya calculados en `localStorage`, separados del borrador actual.
 
-La idea del historial es guardar eventos ya cerrados en el navegador, separados del borrador actual. Un **evento borrador** es el evento en edición. Un **evento cerrado** será una foto final del resultado confirmado, útil para consultar después sin recalcular desde cero.
+Clave:
 
-Cuando se implemente, también deberá ser local, sin backend, con opción clara para borrar historial.
+```text
+quien-puso-que:closed-events
+```
+
+Un **evento borrador** es el evento en edición. Un **evento cerrado** es una foto final del cálculo confirmado por el usuario.
+
+Cada evento cerrado guarda:
+
+- id
+- nombre
+- fecha de creación
+- fecha de cierre
+- total
+- criterio usado
+- snapshot de familias
+- snapshot de balances
+- snapshot de transferencias
+- snapshot de recomendación
+- nota opcional
+
+El historial se consulta desde el inicio de la app y permite borrar eventos cerrados individualmente. No guarda imágenes ni archivos pesados.
 
 ## Ejemplo completo
 
@@ -223,13 +244,12 @@ No requiere variables de entorno para el MVP.
 - [x] Balances y transferencias.
 - [x] Resumen para WhatsApp con fallback de copiado.
 - [x] Borrador local en `localStorage`.
-- [ ] Historial local de eventos cerrados.
+- [x] Historial local de eventos cerrados.
 - [ ] Tests automatizados.
 - [ ] Ticket PDF final.
 
 ## Roadmap
 
-- Historial local de eventos cerrados.
 - Exportar o compartir eventos cerrados.
 - Tests unitarios para cálculos y storage.
 - Mejoras de accesibilidad y QA visual responsive.

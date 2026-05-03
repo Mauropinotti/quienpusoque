@@ -97,6 +97,13 @@ quien-puso-que:current-draft
 - guarda `updatedAt`
 - borra el borrador actual
 
+`closedEventsStorage.ts`:
+
+- usa `quien-puso-que:closed-events`
+- valida snapshots de eventos cerrados
+- guarda hasta 50 eventos
+- permite borrar eventos cerrados individualmente
+
 `useEventDraft.ts`:
 
 - corre solo en cliente
@@ -110,7 +117,7 @@ Evento en edición. Puede no tener familias, puede no tener criterio confirmado 
 
 ## Evento cerrado
 
-Resultado final confirmado que en el futuro se guardará en un historial local. No está implementado en el MVP actual.
+Resultado final confirmado que se guarda en el historial local. Es una foto del cálculo: familias, balances, transferencias, recomendación, total y criterio usado.
 
 ## Restricciones del MVP
 
@@ -118,8 +125,8 @@ Resultado final confirmado que en el futuro se guardará en un historial local. 
 - No auth.
 - No base de datos.
 - No sincronización entre dispositivos.
-- No historial de eventos cerrados todavía.
 - No PDF todavía.
+- No subida de foto todavía.
 - No dependencias nuevas salvo necesidad clara.
 
 ## Qué no hacer
@@ -128,7 +135,7 @@ Resultado final confirmado que en el futuro se guardará en un historial local. 
 - No acceder a `localStorage` durante SSR.
 - No usar datos recuperados de storage sin validar.
 - No cambiar `types/` sin actualizar todos los consumers.
-- No documentar el historial ni el ticket PDF como terminados.
+- No documentar el ticket PDF ni la subida de foto como terminados.
 - No cambiar el tono a corporativo rígido: la app es cálida, clara y argentina.
 
 ## Cómo modificar cálculos

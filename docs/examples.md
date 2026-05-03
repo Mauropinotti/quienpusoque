@@ -182,3 +182,36 @@ Transferencias enteras:
 - C le transfiere $3.333 a A.
 
 Puede quedar una discrepancia de $1 por redondeo. Es esperable.
+
+## Ejemplo 7: evento cerrado guardado en historial
+
+Después de confirmar el resultado del **Asado del sábado**, el usuario toca `Guardar evento cerrado`.
+
+La app guarda localmente una estructura de este estilo:
+
+```ts
+{
+  id: "evt_123",
+  eventName: "Asado del sábado",
+  createdAt: "2026-05-03T18:00:00.000Z",
+  closedAt: "2026-05-03T21:30:00.000Z",
+  totalAmount: 16000,
+  splitModeUsed: "by-family",
+  familiesSnapshot: [/* familias cargadas */],
+  balancesSnapshot: [/* balances calculados */],
+  transfersSnapshot: [/* transferencias sugeridas */],
+  recommendationSnapshot: {/* recomendación usada como contexto */},
+  optionalNote: undefined
+}
+```
+
+Ese evento aparece en el historial del inicio con:
+
+- nombre del evento
+- fecha de cierre
+- total
+- criterio usado
+- cantidad de familias
+- detalle de transferencias al desplegar
+
+Si se borra desde el historial, solo se elimina esa copia cerrada. El borrador actual no se modifica.

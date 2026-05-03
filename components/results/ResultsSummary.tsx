@@ -13,6 +13,8 @@ interface ResultsSummaryProps {
   splitMode: SplitMode;
   balances: FamilyBalance[];
   transfers: Transfer[];
+  isSavedToHistory?: boolean;
+  onSaveClosedEvent: () => void;
   onEditFamilies: () => void;
   onReset: () => void;
 }
@@ -23,6 +25,8 @@ export function ResultsSummary({
   splitMode,
   balances,
   transfers,
+  isSavedToHistory = false,
+  onSaveClosedEvent,
   onEditFamilies,
   onReset,
 }: ResultsSummaryProps) {
@@ -47,6 +51,15 @@ export function ResultsSummary({
           Nuevo evento
         </Button>
       </div>
+
+      <Button
+        variant={isSavedToHistory ? "secondary" : "primary"}
+        fullWidth
+        onClick={onSaveClosedEvent}
+        disabled={isSavedToHistory}
+      >
+        {isSavedToHistory ? "Guardado en historial" : "Guardar evento cerrado"}
+      </Button>
 
       <section className="flex flex-col gap-2">
         <h3 className="text-lg font-bold text-stone-900">Balances</h3>

@@ -14,6 +14,7 @@ interface UseEventDraftOptions {
   eventData: EventData;
   selectedMode: SplitMode;
   recommendationAccepted: boolean | null;
+  createdAt: string;
   onDraftLoaded: (draft: LocalEventDraft) => void;
 }
 
@@ -29,6 +30,7 @@ export function useEventDraft({
   eventData,
   selectedMode,
   recommendationAccepted,
+  createdAt,
   onDraftLoaded,
 }: UseEventDraftOptions) {
   const loadedRef = useRef(false);
@@ -63,8 +65,9 @@ export function useEventDraft({
       eventData,
       selectedMode,
       recommendationAccepted,
+      createdAt,
     });
-  }, [eventData, recommendationAccepted, selectedMode]);
+  }, [createdAt, eventData, recommendationAccepted, selectedMode]);
 
   const clearDraft = useCallback(() => {
     clearCurrentEventDraft();

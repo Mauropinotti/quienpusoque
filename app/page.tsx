@@ -4,13 +4,14 @@ import { useCallback, useMemo, useState } from "react";
 import { nanoid } from "nanoid";
 
 import type { Family, SplitMode } from "@/types/family";
-import type { EventData } from "@/types/event";
+import type { ClosedEvent, EventData } from "@/types/event";
 import type { LocalEventDraft } from "@/lib/storage/localEventStorage";
 
 import { computeAllEligibility } from "@/lib/calculations/eligibility";
 import { calculateBalances } from "@/lib/calculations/calculateBalances";
 import { calculateTransfers } from "@/lib/calculations/calculateTransfers";
 import { recommendSplitMode } from "@/lib/calculations/recommendSplitMode";
+import { saveClosedEvent } from "@/lib/storage/closedEventsStorage";
 
 import { useEventDraft } from "@/hooks/useEventDraft";
 import { EventHeader } from "@/components/event/EventHeader";
@@ -20,6 +21,7 @@ import { FamilyList } from "@/components/families/FamilyList";
 import { RecommendationCard } from "@/components/recommendation/RecommendationCard";
 import { ModeImpactPreview } from "@/components/recommendation/ModeImpactPreview";
 import { ResultsSummary } from "@/components/results/ResultsSummary";
+import { EventHistoryList } from "@/components/history/EventHistoryList";
 
 type Step = "setup" | "families" | "recommendation" | "results";
 
@@ -82,10 +84,17 @@ function getStepFromDraft(draft: LocalEventDraft): Step {
 export default function HomePage() {
   const [step, setStep] = useState<Step>("setup");
   const [eventData, setEventData] = useState<EventData>(EMPTY_EVENT_DATA);
+  const [eventCreatedAt, setEventCreatedAt] = useState(() =>
+    new Date().toISOString()
+  );
   const [selectedMode, setSelectedMode] = useState<SplitMode>("by-family");
   const [recommendationAccepted, setRecommendationAccepted] = useState<
     boolean | null
   >(null);
+  const [savedClosedEventId, setSavedClosedEventId] = useState<string | null>(
+    null
+  );
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   const restoreDraft = useCallback((draft: LocalEventDraft) => {
     setEventData({
@@ -94,8 +103,10 @@ export default function HomePage() {
       splitMode: draft.splitMode,
       families: draft.families,
     });
+    setEventCreatedAt(draft.createdAt);
     setSelectedMode(draft.selectedMode);
     setRecommendationAccepted(draft.recommendationAccepted);
+    setSavedClosedEventId(null);
     setStep(getStepFromDraft(draft));
   }, []);
 
@@ -103,6 +114,7 @@ export default function HomePage() {
     eventData,
     selectedMode,
     recommendationAccepted,
+    createdAt: eventCreatedAt,
     onDraftLoaded: restoreDraft,
   });
 
@@ -131,9 +143,11 @@ export default function HomePage() {
 
   const markDraftChanged = useCallback(() => {
     setRecommendationAccepted(null);
+    setSavedClosedEventId(null);
   }, []);
 
   const loadDemo = useCallback(() => {
+    setEventCreatedAt(new Date().toISOString());
     setEventData((prev) => ({
       ...prev,
       eventName: "Asado del sábado",
@@ -142,6 +156,7 @@ export default function HomePage() {
     }));
     setSelectedMode("by-family");
     setRecommendationAccepted(null);
+    setSavedClosedEventId(null);
     setStep("families");
   }, []);
 
@@ -198,15 +213,42 @@ export default function HomePage() {
     setRecommendationAccepted(
       recommendation ? selectedMode === recommendation.recommendedMode : null
     );
+    setSavedClosedEventId(null);
     setStep("results");
   }, [recommendation, selectedMode]);
+
+  const handleSaveClosedEvent = useCallback(() => {
+    if (!calculation || !eventData.splitMode) return;
+
+    const closedEvent: ClosedEvent = {
+      id: nanoid(10),
+      eventName: eventData.eventName.trim() || "Evento sin nombre",
+      createdAt: eventCreatedAt,
+      closedAt: new Date().toISOString(),
+      totalAmount: calculation.balances.reduce(
+        (sum, balance) => sum + balance.paidAmount,
+        0
+      ),
+      splitModeUsed: eventData.splitMode,
+      familiesSnapshot: eventData.families,
+      balancesSnapshot: calculation.balances,
+      transfersSnapshot: calculation.transfers,
+      recommendationSnapshot: recommendation,
+    };
+
+    saveClosedEvent(closedEvent);
+    setSavedClosedEventId(closedEvent.id);
+    setHistoryRefreshKey((current) => current + 1);
+  }, [calculation, eventCreatedAt, eventData, recommendation]);
 
   const handleReset = useCallback(() => {
     clearDraft();
     setStep("setup");
     setEventData(EMPTY_EVENT_DATA);
+    setEventCreatedAt(new Date().toISOString());
     setSelectedMode("by-family");
     setRecommendationAccepted(null);
+    setSavedClosedEventId(null);
   }, [clearDraft]);
 
   const stepIndex = STEPS.indexOf(step);
@@ -249,6 +291,7 @@ export default function HomePage() {
             >
               Probar con datos de ejemplo
             </button>
+            <EventHistoryList refreshKey={historyRefreshKey} />
           </>
         )}
 
@@ -292,6 +335,8 @@ export default function HomePage() {
             splitMode={eventData.splitMode}
             balances={calculation.balances}
             transfers={calculation.transfers}
+            isSavedToHistory={savedClosedEventId !== null}
+            onSaveClosedEvent={handleSaveClosedEvent}
             onEditFamilies={() => setStep("families")}
             onReset={handleReset}
           />
