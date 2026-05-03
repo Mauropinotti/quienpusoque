@@ -1,223 +1,191 @@
 # Modelo de cálculo
 
-## API principal
+Este documento describe las reglas canónicas de **¿Quién puso qué?**. Si una fórmula cambia, este archivo tiene que cambiar con ella.
+
+## Entradas principales
+
+`calculateBalances(eventData: EventData): CalculationResult`
+
+`EventData` contiene:
+
+- `eventName`
+- `currency`
+- `splitMode`
+- `families`
+
+`Family` contiene:
+
+- `id`
+- `name`
+- `members`
+- `singleMemberType`
+- `paidAmount`
+- `notes`
+
+## Resultado
+
+`calculateBalances` devuelve un resultado discriminado:
 
 ```ts
-calculateBalances(eventData: EventData): CalculationResult
-```
-
-Retorna un resultado discriminado:
-
-```ts
-{ ok: true;  data: CalculationOutput }
+{ ok: true; data: CalculationOutput }
 { ok: false; errors: ValidationError[] }
 ```
 
-`CalculationOutput` contiene:
+`CalculationOutput`:
 
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `totalAmount` | `number` | Suma de `paidAmount` de todas las familias |
-| `eligibleFamilyCount` | `number` | Familias habilitadas para pagar |
-| `eligiblePersonCount` | `number` | Personas habilitadas en total |
-| `splitMode` | `SplitMode` | Modo usado para el cálculo |
-| `balances` | `FamilyBalance[]` | Balance de cada familia |
-
----
+| Campo | Descripción |
+|---|---|
+| `totalAmount` | suma de todos los `paidAmount` |
+| `eligibleFamilyCount` | cantidad de familias habilitadas |
+| `eligiblePersonCount` | cantidad de personas habilitadas |
+| `splitMode` | criterio usado |
+| `balances` | balance calculado por familia |
 
 ## Elegibilidad
 
-Se evalúa por familia **antes** de calcular cuotas.
+La elegibilidad se calcula antes de repartir.
 
 | Condición | `isEligibleToPay` | `eligiblePersons` |
-|---|---|---|
-| `members = 1`, tipo = `adult` | `true` | `1` |
-| `members = 1`, tipo = `minor` | `false` | `0` |
-| `members ≥ 2` | `true` | `members` |
+|---|---:|---:|
+| `members = 1`, `singleMemberType = adult` | true | 1 |
+| `members = 1`, `singleMemberType = minor` | false | 0 |
+| `members >= 2` | true | `members` |
 
-Las familias con `isEligibleToPay = false` reciben `expectedShare = 0` y `status = "guest"`.
+Una familia no elegible queda con:
 
----
+- `expectedShare = 0`
+- `balance = paidAmount`
+- `status = "guest"`
 
-## Reparto por familia (`by-family`)
+En el flujo normal, un menor solo debería tener `paidAmount = 0`. Si se carga otro valor, el status sigue siendo `guest`; no debe generar transferencias.
 
-```
+## Reparto por familia
+
+```text
 cuota_por_familia = totalAmount / eligibleFamilyCount
 ```
 
-Todas las familias elegibles pagan la misma cuota, sin importar cuántos son.
+Todas las familias elegibles pagan la misma cuota.
 
-**Ejemplo:** total $16.000, 4 familias elegibles → cuota = $4.000 cada una.
+Ejemplo:
 
----
-
-## Reparto por persona (`by-person`)
-
+```text
+total = 16.000
+familias elegibles = 4
+cuota = 4.000
 ```
+
+## Reparto por persona
+
+```text
 cuota_por_persona = totalAmount / eligiblePersonCount
-cuota_familia     = cuota_por_persona × family.eligiblePersons
+cuota_familia = cuota_por_persona * eligiblePersons
 ```
 
-La cuota de cada familia es proporcional a la cantidad de integrantes elegibles.
+Cada familia paga proporcionalmente a sus integrantes elegibles.
 
-**Ejemplo:** total $16.000, 10 personas elegibles → $1.600/persona.
-- Familia de 4 → $6.400
-- Familia de 2 → $3.200
-- Familia de 1 adulto → $1.600
+Ejemplo:
 
----
+```text
+total = 16.000
+personas elegibles = 10
+cuota_por_persona = 1.600
+familia de 4 = 6.400
+familia de 2 = 3.200
+familia de 1 adulto = 1.600
+```
 
 ## Balance
 
-```
+```text
 balance = paidAmount - expectedShare
 ```
 
 | Condición | `status` | Significado |
 |---|---|---|
-| `!isEligibleToPay` | `"guest"` | Familia invitada, no aporta |
-| `balance > 0.005` | `"receives"` | Puso de más, le deben |
-| `balance < -0.005` | `"pays"` | Puso de menos, debe pagar |
-| `\|balance\| ≤ 0.005` | `"balanced"` | Equilibrado |
+| `!isEligibleToPay` | `guest` | no aporta |
+| `balance > 0.005` | `receives` | cobra |
+| `balance < -0.005` | `pays` | paga |
+| `abs(balance) <= 0.005` | `balanced` | equilibrado |
 
-El campo `status` en `FamilyBalance` es canónico. Los componentes lo usan directamente; no lo reinterpretan.
+`status` es canónico. Los componentes no deben reinterpretarlo.
 
----
+## Validaciones
 
-## Validaciones defensivas
+`calculateBalances` valida antes de calcular:
 
-`calculateBalances` valida antes de calcular. Cualquier error retorna `{ ok: false, errors }`.
-
-| Código | Condición |
+| Código | Caso |
 |---|---|
-| `NULL_SPLIT_MODE` | `eventData.splitMode` es `null` |
-| `NO_FAMILIES` | `eventData.families` está vacío |
-| `MEMBERS_OUT_OF_RANGE` | `members < 1` o `members > 5` o no es entero |
-| `NEGATIVE_PAID_AMOUNT` | `paidAmount < 0` o no es número finito |
-| `MISSING_SINGLE_MEMBER_TYPE` | `members = 1` y `singleMemberType = null` |
-| `NO_ELIGIBLE_FAMILIES` | Todas las familias son menores solos |
+| `NULL_SPLIT_MODE` | no hay criterio seleccionado |
+| `NO_FAMILIES` | no hay familias |
+| `MEMBERS_OUT_OF_RANGE` | integrantes fuera de 1 a 5 o no entero |
+| `NEGATIVE_PAID_AMOUNT` | monto negativo o no finito |
+| `MISSING_SINGLE_MEMBER_TYPE` | familia de 1 integrante sin tipo |
+| `NO_ELIGIBLE_FAMILIES` | ninguna familia puede aportar |
 
-**Caso borde: gasto total cero** — no es un error. Si todas las familias pagaron $0, las cuotas son $0 y todos quedan en `"balanced"`.
+Gasto total cero no es error. Si todos pagaron $0, todos quedan equilibrados salvo invitados no aportantes.
 
----
+## Redondeo
 
-## Redondeo en balances
-
-Todas las cuotas y balances se redondean a 2 decimales con `Math.round(n * 100) / 100`.
-
-En grupos con montos no divisibles puede quedar hasta ±$0.01 por familia entre lo que deberían sumar cuotas y el total real. Es el "problema del centavo", cosmético e inevitable con aritmética decimal finita.
-
----
-
-## Transferencias (`calculateTransfers`)
+Balances y cuotas se redondean a 2 decimales:
 
 ```ts
-calculateTransfers(balances: FamilyBalance[]): TransferResult
+Math.round(n * 100) / 100
 ```
 
-### Resultado
+Las transferencias se redondean luego a pesos enteros. Puede aparecer una discrepancia de redondeo de 0 o pocos pesos en casos no divisibles.
+
+## Transferencias
+
+`calculateTransfers(balances: FamilyBalance[]): TransferResult`
+
+Entrada: balances ya calculados.
+
+Salida:
 
 ```ts
 interface TransferResult {
-  transfers: Transfer[];       // lista de pagos a realizar
-  totalOwed: number;           // deuda total en pesos enteros
-  totalTransferred: number;    // suma de los montos generados
-  roundingDiscrepancy: number; // diferencia por redondeo (≤ N−1 pesos)
+  transfers: Transfer[];
+  totalOwed: number;
+  totalTransferred: number;
+  roundingDiscrepancy: number;
 }
 ```
 
-### Algoritmo
+Algoritmo:
 
-**Entrada:** `FamilyBalance[]` con campo `status` canónico.
+1. Tomar deudores con `status = "pays"`.
+2. Tomar acreedores con `status = "receives"`.
+3. Convertir balances a pesos enteros con `Math.round`.
+4. Ordenar de mayor a menor monto. En empate, ordenar por nombre.
+5. Emparejar con greedy:
 
-1. **Filtrar** por `status === "pays"` (deudores) y `status === "receives"` (acreedores).
-   Familias con `status === "guest"` o `"balanced"` nunca entran.
-
-2. **Convertir a pesos enteros** con `Math.round`:
-   - Debtor: `Math.round(Math.abs(balance))`
-   - Creditor: `Math.round(balance)`
-   Descartar partes con monto < 1 peso (ruido de redondeo sub-peso).
-
-3. **Ordenar** ambos grupos de mayor a menor.
-   Desempate secundario por nombre (alfabético ascendente) → **determinismo garantizado**.
-
-4. **Emparejamiento greedy secuencial:**
-   ```
-   mientras haya deudores y acreedores:
-     amount = min(debtor.remaining, creditor.remaining)
-     registrar transferencia(debtor → creditor, amount)
-     debtor.remaining  -= amount
-     creditor.remaining -= amount
-     avanzar el puntero del lado que llegó a 0
-   ```
-
-5. **Verificar** `roundingDiscrepancy = |totalOwed − totalExpected|`.
-
-### Complejidad y optimalidad
-
-El algoritmo produce **a lo sumo N + M − 1 transferencias** (N = deudores, M = acreedores), que es el mínimo demostrable para emparejamiento secuencial.
-
-Toda la aritmética interna opera en enteros (pesos enteros) → sin deriva de punto flotante durante el loop.
-
-### Redondeo en transferencias
-
-Los montos de cada transferencia son pesos enteros. La diferencia total entre `totalOwed` y `totalTransferred` es cero — el algoritmo consume exactamente lo que debe cada deudor.
-
-El `roundingDiscrepancy` refleja la diferencia entre el lado deudor y el acreedor **antes del loop**, producida por el redondeo de balances en `calculateBalances`. Máximo teórico: N − 1 pesos, donde N es el número de partes involucradas. En la práctica es 0 o 1 peso para grupos habituales.
-
----
-
-## Ejemplo completo
-
-### Datos de entrada
-
-| Familia | Integrantes | Tipo | Pagó |
-|---|---|---|---|
-| Los García | 4 | — | $8.000 |
-| Los Rodríguez | 2 | — | $3.000 |
-| Los López | 1 | Adulto | $0 |
-| Los Martínez | 1 | Menor | $0 |
-| Los Fernández | 3 | — | $5.000 |
-
-**Total: $16.000** | **Elegibles: 4 familias, 10 personas** | **Martínez: guest**
-
----
-
-### Por familia
-
+```text
+amount = min(deudor.remaining, acreedor.remaining)
+registrar transferencia
+restar amount a ambos
+avanzar el lado que llegó a cero
 ```
+
+Familias `guest` y `balanced` no entran en transferencias.
+
+## Ejemplo resumido
+
+Total: $16.000. Criterio: `by-family`. Familias elegibles: 4.
+
+```text
 cuota = 16.000 / 4 = 4.000
 ```
 
-| Familia | Pagó | Le tocaba | Balance | Status |
-|---|---|---|---|---|
-| Los García | $8.000 | $4.000 | +$4.000 | receives |
-| Los Rodríguez | $3.000 | $4.000 | −$1.000 | pays |
-| Los López | $0 | $4.000 | −$4.000 | pays |
-| Los Martínez | $0 | $0 | $0 | guest |
-| Los Fernández | $5.000 | $4.000 | +$1.000 | receives |
+| Familia | Pagó | Le tocaba | Balance | Estado |
+|---|---:|---:|---:|---|
+| Los García | $8.000 | $4.000 | +$4.000 | cobra |
+| Los Rodríguez | $3.000 | $4.000 | -$1.000 | paga |
+| Los López | $0 | $4.000 | -$4.000 | paga |
+| Los Martínez | $0 | $0 | $0 | no aporta |
+| Los Fernández | $5.000 | $4.000 | +$1.000 | cobra |
 
-**Transferencias:**
-- Rodríguez → García: $1.000
-- López → García: $3.000
-- López → Fernández: $1.000
+Transferencias:
 
----
-
-### Por persona
-
-```
-cuota_persona = 16.000 / 10 = 1.600
-```
-
-| Familia | Personas | Le tocaba | Pagó | Balance | Status |
-|---|---|---|---|---|---|
-| Los García | 4 | $6.400 | $8.000 | +$1.600 | receives |
-| Los Rodríguez | 2 | $3.200 | $3.000 | −$200 | pays |
-| Los López | 1 | $1.600 | $0 | −$1.600 | pays |
-| Los Martínez | 0 | $0 | $0 | $0 | guest |
-| Los Fernández | 3 | $4.800 | $5.000 | +$200 | receives |
-
-**Transferencias:**
-- López → García: $1.600
-- Rodríguez → Fernández: $200
+- Los López le transfiere $4.000 a Los García.
+- Los Rodríguez le transfiere $1.000 a Los Fernández.

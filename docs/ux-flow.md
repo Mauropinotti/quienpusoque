@@ -1,71 +1,155 @@
 # Flujo UX
 
-## Pasos del flujo guiado
+La app está pensada para usarse desde el celular, en una mesa, con poca paciencia y bastante hambre. Tiene que ser clara, rápida y confiable.
+
+## Flujo guiado
 
 ```text
-[setup] -> [families] -> [recommendation] -> [results]
+setup -> families -> recommendation -> results
 ```
 
 ## 1. Setup
 
-- Nombre del evento.
-- Acción para probar con datos de ejemplo.
-- Si existe un borrador recuperado, el nombre vuelve cargado automáticamente.
+Objetivo: crear el evento.
+
+UI:
+
+- título de la app
+- input de nombre del evento
+- botón para avanzar a familias
+- acción para probar datos de ejemplo
+
+Reglas:
+
+- el nombre es requerido para avanzar
+- si hay un borrador recuperado con solo nombre, se vuelve a este paso
 
 ## 2. Families
 
-- Formulario para agregar familias.
-- Campos: nombre, integrantes, tipo Adulto/Menor si tiene 1 integrante, monto pagado y nota.
-- Lista de familias cargadas.
-- Edición inline desde cada tarjeta.
-- Eliminación con confirmación visual.
-- Acción “Empezar de nuevo” para borrar el evento actual y su borrador local.
+Objetivo: cargar y mantener la lista de participantes.
+
+Formulario:
+
+- nombre
+- cantidad de integrantes
+- selector Adulto/Menor si tiene 1 integrante
+- monto pagado
+- nota o detalle
+
+Lista:
+
+- tarjetas claras por familia
+- monto pagado destacado
+- badge `No aporta` para menor solo
+- edición inline
+- eliminación con confirmación visual
+- total acumulado
+
+Acciones:
+
+- `Ver recomendación` cuando hay al menos 2 familias
+- `Empezar de nuevo` para borrar estado actual y borrador local
 
 ## 3. Recommendation
 
-- Muestra el criterio recomendado con razones.
-- Permite aceptar la recomendación o elegir manualmente.
-- Al confirmar, se guarda si la recomendación fue aceptada o no.
+Objetivo: explicar el criterio sugerido y permitir decisión manual.
+
+UI:
+
+- recomendación destacada
+- confianza
+- razones breves
+- selector `Por familia` / `Por persona`
+- botón `Ver resultado`
+
+Reglas:
+
+- al entrar al paso, la app selecciona el modo recomendado
+- si el usuario cambia el modo, se marca que la recomendación no quedó aceptada todavía
+- al confirmar, se guarda si el modo elegido coincide con la recomendación
 
 ## 4. Results
 
-- Total del evento.
-- Criterio usado.
-- Balances con badges: paga, cobra, no aporta, equilibrado.
-- Transferencias sugeridas.
-- Botón para copiar resumen para WhatsApp.
-- Acción “Nuevo evento” para borrar el evento actual y limpiar el borrador.
+Objetivo: cerrar la cuenta.
 
-## Persistencia local
+UI:
 
-El evento actual se guarda automáticamente como borrador en `localStorage`, con la clave:
+- total del evento
+- criterio usado
+- balances
+- transferencias sugeridas
+- botón para copiar resumen para WhatsApp
+- botón `Editar familias`
+- botón `Nuevo evento`
+
+Badges:
+
+- `Paga`
+- `Cobra`
+- `Equilibrado`
+- `No aporta`
+
+## Copiar para WhatsApp
+
+El botón usa `navigator.clipboard` cuando está disponible.
+
+Si el navegador bloquea el copiado, se muestra un fallback visual con el texto en un `textarea` seleccionado para copiar manualmente.
+
+## Persistencia local del borrador
+
+La app guarda el evento actual en `localStorage`:
 
 ```text
 quien-puso-que:current-draft
 ```
 
-Se guarda:
+Datos:
 
 - nombre del evento
 - moneda
-- familias cargadas
+- familias
 - modo seleccionado
 - modo confirmado
-- si el criterio recomendado fue aceptado o no
+- aceptación de recomendación
 - fecha de última edición
 
-## Recuperación
+La lectura se hace solo del lado cliente, después de hydration.
 
-La recuperación ocurre solo del lado cliente, después de hidratar la app. Antes de usar un borrador se validan estructura, tipos, familias, modo de reparto y fecha.
+## Recuperación del borrador
 
-- Si el borrador tiene criterio confirmado y al menos 2 familias, vuelve a resultados.
-- Si tiene familias pero no criterio confirmado, vuelve a familias.
-- Si solo tiene nombre de evento, vuelve a setup.
+Antes de restaurar, se validan estructura, familias, modos y fecha.
 
-## Limitaciones
+Destino:
 
-- El borrador existe solo en el navegador actual.
-- No sincroniza entre dispositivos.
-- Puede perderse si el usuario limpia datos del sitio.
-- En modo incógnito puede durar solo hasta cerrar la sesión.
-- Si `localStorage` no está disponible, la app sigue funcionando sin persistencia.
+- modo confirmado + 2 o más familias: `results`
+- familias sin modo confirmado: `families`
+- solo nombre: `setup`
+
+Si el storage falla o trae datos inválidos, se ignora el borrador y la app arranca vacía.
+
+## Borrar evento actual
+
+`Empezar de nuevo` y `Nuevo evento` limpian:
+
+- estado React
+- selección de criterio
+- aceptación de recomendación
+- borrador de `localStorage`
+
+## Evento borrador
+
+Evento en edición. Puede estar incompleto. Existe para no perder datos al recargar.
+
+## Evento cerrado
+
+Evento final confirmado para historial local. Todavía no está implementado.
+
+Cuando exista, no debe pisar el borrador actual: serán conceptos separados.
+
+## Limitaciones UX actuales
+
+- No hay historial de eventos cerrados.
+- No hay confirmación de cierre final.
+- No hay exportación PDF.
+- No hay sincronización entre dispositivos.
+- No hay modo offline formal, aunque el borrador local ayuda si la página ya cargó.

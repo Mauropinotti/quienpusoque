@@ -1,46 +1,131 @@
-# GEMINI.md — Contexto para Gemini
+# GEMINI.md - Contexto para Gemini
 
-## Proyecto: ¿Quién puso qué?
+## Proyecto
 
-App web para distribuir gastos en eventos grupales. Calcula quién pagó de más, quién debe pagar, y qué transferencias hacer para que todos queden equilibrados.
+**¿Quién puso qué?** es una app web para repartir gastos de eventos grupales. Calcula quién puso de más, quién paga, quién cobra y qué transferencias conviene hacer.
 
 ## Tecnología
 
-Next.js 15 + React 19 + TypeScript + Tailwind CSS v4. Sin backend. Sin base de datos. Deploy en Vercel.
+- Next.js App Router (`next` 16.2.4)
+- React 19
+- TypeScript
+- Tailwind CSS v4
+- nanoid
+- Sin backend
+- Sin base de datos
+- Sin autenticación
 
-## Principio de diseño
+## Principio central
 
-**Separación estricta entre lógica y UI.**
+Separación estricta entre lógica y UI:
 
-- `lib/calculations/` → funciones puras sin React
-- `components/` → solo renderizado, sin reglas de negocio
-- `app/page.tsx` → orquesta el estado y llama a las funciones de lib
+- `lib/calculations/`: funciones puras.
+- `components/`: renderizado e interacción.
+- `types/`: contratos.
+- `app/page.tsx`: orquestación del flujo.
 
-## Dominio del negocio
+## Dominio
 
-**Family**: grupo que participa del evento. Tiene nombre, cantidad de integrantes (1-5), tipo si es 1 integrante (adult/minor), y monto pagado.
+Una `Family` representa un grupo participante:
 
-**Elegibilidad**: una familia con 1 integrante menor NO paga. Una familia con 1 adulto o con 2+ integrantes SÍ paga.
+- nombre
+- cantidad de integrantes de 1 a 5
+- tipo si tiene 1 integrante (`adult` o `minor`)
+- monto pagado
+- nota opcional
 
-**Modos de reparto**:
-- `by-family`: partes iguales por familia
-- `by-person`: proporcional a integrantes elegibles
+## Reglas de negocio
 
-**Recomendación**: el sistema evalúa ambos modos y recomienda el más justo según la composición del grupo.
+### Elegibilidad
 
-**Transferencias**: algoritmo greedy que minimiza la cantidad de transferencias necesarias.
+- Familia de 1 adulto: paga.
+- Familia de 1 menor: no aporta.
+- Familia de 2 o más integrantes: paga.
 
-## Estructura clave
+La regla vive en `lib/calculations/eligibility.ts`.
 
+### Modos de reparto
+
+- `by-family`: divide el total entre familias habilitadas.
+- `by-person`: divide el total entre personas habilitadas.
+
+### Balance
+
+```text
+balance = paidAmount - expectedShare
 ```
-types/          → contratos TypeScript
-lib/            → lógica pura
-components/     → UI por dominio
-app/page.tsx    → estado + orquestación
+
+Estados:
+
+- `receives`: cobra.
+- `pays`: paga.
+- `balanced`: equilibrado.
+- `guest`: no aporta.
+
+### Transferencias
+
+Se calculan desde `FamilyBalance[]`, no desde familias crudas. El algoritmo greedy empareja deudores y acreedores y usa pesos enteros para transferencias.
+
+## Recomendación
+
+`recommendSplitMode` compara ambos criterios con señales ponderadas:
+
+- composición del grupo
+- familias de 1 adulto
+- familias numerosas
+- impacto promedio entre modos
+- impacto máximo entre modos
+- similitud de tamaños
+
+La recomendación no es una obligación: la UI permite elegir manualmente.
+
+## localStorage
+
+El MVP guarda solo el borrador actual:
+
+```text
+quien-puso-que:current-draft
 ```
 
-## Convenciones
+Se guarda nombre, familias, modo seleccionado, modo confirmado, aceptación de recomendación y fecha de última edición.
 
-- TypeScript estricto, sin `any`
-- Tailwind v4 (configuración vía globals.css, sin tailwind.config.ts)
-- español argentino en UI y comentarios
+Reglas:
+
+- solo cliente
+- validar antes de restaurar
+- tolerar errores y storage bloqueado
+- no guardar información sensible
+
+## Evento borrador
+
+Evento actual en edición. Puede estar incompleto. Sirve para no perder datos al recargar.
+
+## Evento cerrado
+
+Evento final confirmado para historial local futuro. No está implementado todavía. Si se menciona, debe ser como roadmap.
+
+## Restricciones del MVP
+
+- No backend.
+- No login.
+- No base de datos.
+- No historial cerrado todavía.
+- No PDF todavía.
+- No sincronización.
+
+## Qué no debe hacer un agente
+
+- No agregar reglas de cálculo en React.
+- No recalcular `status` en componentes.
+- No acceder a `window` o `localStorage` fuera del cliente.
+- No usar datos de storage sin validar.
+- No presentar roadmap como funcionalidad lista.
+- No agregar librerías innecesarias.
+
+## Documentación a actualizar
+
+- Fórmulas: `docs/calculation-model.md`.
+- Recomendación: `docs/recommendation-criteria.md`.
+- UX: `docs/ux-flow.md`.
+- Casos: `docs/examples.md`.
+- Resumen público: `README.md`.
