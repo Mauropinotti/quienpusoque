@@ -288,7 +288,7 @@ No requiere variables de entorno para el MVP.
 
 ## Licencia
 
-Licencia pendiente de definir. Antes de publicar el repo como open source conviene agregar un archivo `LICENSE`.
+Este proyecto se publica bajo licencia MIT. Se puede usar, copiar, modificar y distribuir libremente manteniendo el aviso de copyright y la licencia.
 
 ## Filosofía
 
