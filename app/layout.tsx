@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { Geist } from "next/font/google";
 import { AppFooter } from "@/components/layout/AppFooter";
 import "./globals.css";
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-[#fdf8f3] text-stone-950">
         <div className="flex-1">{children}</div>
         <AppFooter />
+        <Analytics />
       </body>
     </html>
   );
