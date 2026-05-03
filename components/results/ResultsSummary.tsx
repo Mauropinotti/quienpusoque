@@ -1,9 +1,13 @@
 import type { FamilyBalance, Transfer } from "@/types/calculation";
-import type { SplitMode } from "@/types/family";
+import type { Family, SplitMode } from "@/types/family";
+import type { SplitRecommendation } from "@/types/recommendation";
+import type { EventTicketPhoto } from "@/types/pdf";
 import { BalanceCard } from "./BalanceCard";
 import { TransfersList } from "./TransfersList";
 import { CopyResultButton } from "./CopyResultButton";
+import { ExportPdfButton } from "./ExportPdfButton";
 import { Button } from "@/components/ui/Button";
+import { EventPhotoUploader } from "@/components/event/EventPhotoUploader";
 import { generateWhatsappText } from "@/lib/text/generateWhatsappText";
 import { formatCurrency } from "@/lib/formatting/formatCurrency";
 
@@ -11,10 +15,14 @@ interface ResultsSummaryProps {
   eventName: string;
   currency: string;
   splitMode: SplitMode;
+  families: Family[];
   balances: FamilyBalance[];
   transfers: Transfer[];
+  recommendation: SplitRecommendation | null;
+  ticketPhoto: EventTicketPhoto | null;
   isSavedToHistory?: boolean;
   historySaveError?: string;
+  onTicketPhotoChange: (photo: EventTicketPhoto | null) => void;
   onSaveClosedEvent: () => void;
   onEditFamilies: () => void;
   onReset: () => void;
@@ -24,10 +32,14 @@ export function ResultsSummary({
   eventName,
   currency,
   splitMode,
+  families,
   balances,
   transfers,
+  recommendation,
+  ticketPhoto,
   isSavedToHistory = false,
   historySaveError,
+  onTicketPhotoChange,
   onSaveClosedEvent,
   onEditFamilies,
   onReset,
@@ -79,6 +91,26 @@ export function ResultsSummary({
           {historySaveError}
         </p>
       )}
+
+      <EventPhotoUploader
+        photo={ticketPhoto}
+        onPhotoChange={onTicketPhotoChange}
+      />
+
+      <ExportPdfButton
+        data={{
+          appName: "¿Quién puso qué?",
+          eventName,
+          currency,
+          generatedAt: new Date(),
+          splitMode,
+          families,
+          balances,
+          transfers,
+          recommendation,
+          photo: ticketPhoto,
+        }}
+      />
 
       <section className="flex flex-col gap-2">
         <h3 className="text-lg font-bold text-stone-900">Balances</h3>

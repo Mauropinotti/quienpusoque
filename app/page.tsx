@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 
 import type { Family, SplitMode } from "@/types/family";
 import type { ClosedEvent, EventData } from "@/types/event";
+import type { EventTicketPhoto } from "@/types/pdf";
 import type { LocalEventDraft } from "@/lib/storage/localEventStorage";
 
 import { computeAllEligibility } from "@/lib/calculations/eligibility";
@@ -96,6 +97,7 @@ export default function HomePage() {
   );
   const [historySaveError, setHistorySaveError] = useState("");
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [ticketPhoto, setTicketPhoto] = useState<EventTicketPhoto | null>(null);
 
   const restoreDraft = useCallback((draft: LocalEventDraft) => {
     setEventData({
@@ -154,6 +156,7 @@ export default function HomePage() {
     setRecommendationAccepted(null);
     setSavedClosedEventId(null);
     setHistorySaveError("");
+    setTicketPhoto(null);
   }, []);
 
   const loadDemo = useCallback(() => {
@@ -168,6 +171,7 @@ export default function HomePage() {
     setRecommendationAccepted(null);
     setSavedClosedEventId(null);
     setHistorySaveError("");
+    setTicketPhoto(null);
     setStep("families");
   }, []);
 
@@ -269,6 +273,7 @@ export default function HomePage() {
     setRecommendationAccepted(null);
     setSavedClosedEventId(null);
     setHistorySaveError("");
+    setTicketPhoto(null);
   }, [clearDraft]);
 
   const stepIndex = STEPS.indexOf(step);
@@ -355,10 +360,14 @@ export default function HomePage() {
             eventName={eventData.eventName}
             currency={eventData.currency}
             splitMode={eventData.splitMode}
+            families={eventData.families}
             balances={calculation.balances}
             transfers={calculation.transfers}
+            recommendation={recommendation}
+            ticketPhoto={ticketPhoto}
             isSavedToHistory={savedClosedEventId !== null}
             historySaveError={historySaveError}
+            onTicketPhotoChange={setTicketPhoto}
             onSaveClosedEvent={handleSaveClosedEvent}
             onEditFamilies={() => setStep("families")}
             onReset={handleReset}

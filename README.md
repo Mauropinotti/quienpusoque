@@ -42,6 +42,7 @@ Esta app convierte esos datos en:
 5. Podés aceptar la recomendación o elegir manualmente.
 6. Se calculan balances y transferencias.
 7. Copiás el resumen para WhatsApp.
+8. Descargás el ticket PDF final.
 
 ## Familias de un solo integrante
 
@@ -167,6 +168,28 @@ Cada evento cerrado guarda:
 
 El historial se consulta desde el inicio de la app y permite borrar eventos cerrados individualmente. No guarda imágenes ni archivos pesados.
 
+## Ticket PDF final
+
+El ticket PDF es la salida formal del sistema. Se genera desde resultados con el botón `Descargar ticket PDF`.
+
+Incluye:
+
+- nombre de la app y del evento
+- fecha de generación
+- foto opcional del evento
+- gasto total
+- familias cargadas y habilitadas
+- personas habilitadas
+- criterio usado
+- criterio recomendado y confianza
+- explicación breve del criterio
+- tabla de familias, cuotas, balances y estados
+- familias no aportantes
+- transferencias sugeridas
+- nota de cierre
+
+La foto opcional se procesa localmente en el navegador. No se sube a servidores, no se guarda en historial y no se persiste en `localStorage`.
+
 ## Ejemplo completo
 
 Evento: **Asado del sábado**
@@ -207,6 +230,7 @@ Transferencias sugeridas:
 - TypeScript
 - Tailwind CSS v4
 - nanoid
+- jsPDF para generar el ticket PDF en el navegador
 - Sin backend
 - Sin base de datos
 - Sin autenticación
@@ -249,7 +273,7 @@ No requiere variables de entorno para el MVP.
 - [x] Borrador local en `localStorage`.
 - [x] Historial local de eventos cerrados.
 - [x] Tests automatizados.
-- [ ] Ticket PDF final.
+- [x] Ticket PDF final con foto opcional local.
 
 ## Roadmap
 
@@ -257,7 +281,7 @@ No requiere variables de entorno para el MVP.
 - Tests unitarios para cálculos y storage.
 - Mejoras de accesibilidad y QA visual responsive.
 - Soporte opcional para más monedas.
-- Ticket PDF final con foto opcional del evento. Esto es roadmap, no funcionalidad terminada.
+- Mejoras visuales del ticket PDF y opciones de impresión.
 
 ## Licencia
 

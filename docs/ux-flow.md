@@ -79,6 +79,8 @@ UI:
 - balances
 - transferencias sugeridas
 - botón `Guardar evento cerrado`
+- selector de foto opcional para el ticket PDF
+- botón `Descargar ticket PDF`
 - botón para copiar resumen para WhatsApp
 - botón `Editar familias`
 - botón `Nuevo evento`
@@ -95,6 +97,19 @@ Badges:
 El botón usa `navigator.clipboard` cuando está disponible.
 
 Si el navegador bloquea el copiado, se muestra un fallback visual con el texto en un `textarea` seleccionado para copiar manualmente.
+
+## Descargar ticket PDF
+
+El usuario puede seleccionar una foto opcional y descargar un ticket PDF desde resultados.
+
+La foto:
+
+- se procesa localmente
+- no se sube a servidores
+- no se guarda en historial
+- no se persiste en el borrador
+
+El PDF se genera con datos estructurados del cálculo, no capturando la pantalla. Si no hay foto, se genera igual.
 
 ## Persistencia local del borrador
 
@@ -167,7 +182,7 @@ Si `localStorage` está vacío, se muestra un estado vacío y el flujo principal
 ## Limitaciones UX actuales
 
 - El historial solo existe en el navegador actual.
-- No hay exportación PDF.
-- No hay subida de foto.
+- El PDF se descarga localmente; no hay almacenamiento remoto.
+- La foto del PDF no se guarda para futuras sesiones.
 - No hay sincronización entre dispositivos.
 - No hay modo offline formal, aunque el borrador local ayuda si la página ya cargó.

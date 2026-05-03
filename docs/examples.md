@@ -215,3 +215,43 @@ Ese evento aparece en el historial del inicio con:
 - detalle de transferencias al desplegar
 
 Si se borra desde el historial, solo se elimina esa copia cerrada. El borrador actual no se modifica.
+
+## Ejemplo 8: ticket PDF
+
+Después de revisar resultados, el usuario puede tocar `Descargar ticket PDF`.
+
+Contenido esperado del ticket:
+
+```text
+¿Quién puso qué?
+Ticket final de cálculo
+
+Asado del sábado
+Generado el 2 may 2026, 21:30
+
+Resumen general
+- Gasto total: $16.000
+- Familias cargadas: 5
+- Familias habilitadas: 4
+- Personas habilitadas: 10
+- Criterio usado: por familia
+- Recomendado: por familia
+- Confianza: low / medium / high
+
+Criterio usado
+Se usó reparto por familia según la recomendación o elección del usuario.
+
+Familias
+Los García | 4 | pagó $8.000 | cuota $4.000 | cobra $4.000
+Los Rodríguez | 2 | pagó $3.000 | cuota $4.000 | paga $1.000
+Los Martínez | 1 menor | no aporta
+
+Transferencias sugeridas
+Los López le transfiere $4.000 a Los García
+Los Rodríguez le transfiere $1.000 a Los Fernández
+
+Este ticket fue generado localmente con ¿Quién puso qué?.
+La app puede ser divertida. La cuenta no.
+```
+
+Si el usuario selecciona una foto, aparece arriba como portada simple. La imagen se usa solo para el PDF actual.

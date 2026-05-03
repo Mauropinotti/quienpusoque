@@ -2,7 +2,7 @@
 
 ## Proyecto
 
-**¿Quién puso qué?** es una calculadora de gastos compartidos para reuniones y eventos. El objetivo del MVP es resolver un evento chico desde el celular: cargar familias, elegir criterio de reparto, ver balances, generar transferencias y copiar un resumen para WhatsApp.
+**¿Quién puso qué?** es una calculadora de gastos compartidos para reuniones y eventos. El MVP resuelve un evento desde el celular: cargar familias, elegir criterio, ver balances, generar transferencias, guardar historial local, copiar WhatsApp y descargar un ticket PDF final.
 
 ## Stack actual
 
@@ -11,11 +11,10 @@
 - TypeScript
 - Tailwind CSS v4
 - nanoid
+- jsPDF para generación estructurada del PDF
 - Sin backend, sin base de datos, sin autenticación
 
 ## Arquitectura
-
-La lógica de negocio está separada de React:
 
 - `app/page.tsx`: estado global y orquestación del flujo.
 - `components/`: UI por paso y componentes base.
@@ -23,125 +22,55 @@ La lógica de negocio está separada de React:
 - `lib/calculations/`: funciones puras de elegibilidad, recomendación, balances y transferencias.
 - `lib/formatting/`: formateo de moneda y porcentajes.
 - `lib/text/`: generación de texto para WhatsApp.
+- `lib/pdf/`: generación estructurada del ticket PDF final.
 - `lib/storage/`: acceso defensivo a `localStorage`.
 - `hooks/`: coordinación cliente, por ejemplo `useEventDraft`.
 - `docs/`: documentación funcional y técnica.
 
-## Flujo de la app
-
-```text
-setup -> families -> recommendation -> results
-```
-
-El estado global vive en `app/page.tsx`. Los resultados de recomendación, balances y transferencias deben derivarse usando funciones puras de `lib/`.
-
 ## Reglas de negocio
 
-### Familias
-
-`Family` vive en `types/family.ts`:
-
-- `name`: nombre visible.
-- `members`: entero de 1 a 5.
-- `singleMemberType`: `adult`, `minor` o `null`.
-- `paidAmount`: monto pagado, no negativo.
-- `notes`: detalle opcional.
-
-### Elegibilidad
-
-Regla canónica en `lib/calculations/eligibility.ts`:
-
-- 1 adulto: paga, `eligiblePersons = 1`.
+- 1 adulto: aporta, `eligiblePersons = 1`.
 - 1 menor: no aporta, `eligiblePersons = 0`.
-- 2 o más integrantes: paga, `eligiblePersons = members`.
+- 2 o más integrantes: aporta, `eligiblePersons = members`.
+- `by-family`: divide el total por familias habilitadas.
+- `by-person`: divide el total por personas habilitadas.
+- `balance = paidAmount - expectedShare`.
+- El `status` canónico (`receives`, `pays`, `balanced`, `guest`) se calcula en `calculateBalances` y la UI no debe reinterpretarlo.
 
-No dupliques esta regla en componentes.
+## Storage local
 
-### Criterios de reparto
-
-- `by-family`: el total se divide por familias habilitadas.
-- `by-person`: el total se divide por personas habilitadas y cada familia paga proporcionalmente a sus integrantes elegibles.
-
-### Balances
-
-Regla en `calculateBalances`:
-
-```text
-balance = paidAmount - expectedShare
-```
-
-El `status` canónico puede ser:
-
-- `receives`: cobra.
-- `pays`: paga.
-- `balanced`: equilibrado.
-- `guest`: no aporta.
-
-Los componentes deben consumir `status`; no deben recalcularlo.
-
-### Transferencias
-
-`calculateTransfers` usa un emparejamiento greedy entre deudores y acreedores. Trabaja con pesos enteros para evitar deriva de punto flotante en el loop.
-
-## Motor de recomendación
-
-`recommendSplitMode` usa un sistema de señales con peso:
-
-- muchas familias de 1 adulto favorecen `by-person`
-- muchas familias grandes favorecen `by-family`
-- impacto promedio alto favorece `by-person`
-- impacto máximo alto es señal crítica para `by-person`
-- impacto bajo con tamaños similares favorece `by-family`
-
-Si modificás criterios o umbrales, actualizá:
-
-- `docs/recommendation-criteria.md`
-- `README.md`
-- ejemplos relevantes en `docs/examples.md`
-
-## localStorage
-
-El borrador actual se guarda en:
+Borrador actual:
 
 ```text
 quien-puso-que:current-draft
 ```
 
-Los eventos cerrados se guardan en:
+Eventos cerrados:
 
 ```text
 quien-puso-que:closed-events
 ```
-
-Implementación:
-
-- `lib/storage/localEventStorage.ts`: lee, valida, guarda y borra.
-- `hooks/useEventDraft.ts`: integra storage con el estado cliente.
 
 Reglas:
 
 - Solo acceder a `localStorage` del lado cliente.
 - Validar todo dato recuperado antes de usarlo.
 - No romper SSR ni hydration.
-- Si `localStorage` no existe o falla, la app debe seguir funcionando.
+- Si `localStorage` falla, la app debe seguir funcionando.
 - No guardar información sensible.
 
-## Evento borrador y evento cerrado
+## PDF final
 
-Un **evento borrador** es el evento actual en edición. Puede estar en setup, families, recommendation o results. Se guarda para no perder datos al recargar.
+El ticket PDF es la salida final del cálculo. Se genera del lado cliente con `jsPDF` desde `lib/pdf/generateEventTicketPdf.ts`.
 
-Un **evento cerrado** es una versión final confirmada para historial local. Guarda snapshots de familias, balances, transferencias y recomendación. No debe pisar el borrador actual.
+Reglas:
 
-## Restricciones del MVP
-
-- No backend.
-- No base de datos.
-- No autenticación.
-- No historial remoto.
-- No sincronización entre dispositivos.
-- No librerías nuevas sin una razón fuerte.
-- No ticket PDF todavía.
-- No subida de fotos todavía.
+- No convertir el PDF en backend.
+- No subir fotos.
+- No guardar fotos pesadas en `localStorage`.
+- La foto opcional se procesa localmente y se usa solo para el PDF actual.
+- Preferir generación estructurada a screenshots de UI.
+- Actualizar `docs/pdf-ticket.md` ante cambios.
 
 ## Qué no debe hacer un agente
 
@@ -149,27 +78,17 @@ Un **evento cerrado** es una versión final confirmada para historial local. Gua
 - No reinterpretar balances en UI.
 - No modificar tipos compartidos sin actualizar consumers y docs.
 - No guardar datos fuera de `localStorage`.
-- No presentar roadmap como funcionalidad hecha.
+- No persistir fotos del ticket sin decisión explícita.
 - No agregar dependencias por conveniencia menor.
-- No borrar cambios del usuario.
-
-## Cómo modificar cálculos sin romper la app
-
-1. Identificar el contrato en `types/`.
-2. Cambiar la función pura en `lib/calculations/`.
-3. Mantener entradas y salidas deterministas.
-4. Actualizar orquestación en `app/page.tsx` solo si cambia el contrato.
-5. Actualizar UI solo para mostrar nuevos datos, no para calcularlos.
-6. Actualizar documentación técnica y ejemplos.
-7. Correr `npm run lint` y `npm run build`.
+- No presentar roadmap como funcionalidad hecha.
 
 ## Documentación a actualizar ante cambios
 
-- Cambios de reglas o fórmulas: `README.md`, `docs/calculation-model.md`, `docs/examples.md`.
-- Cambios de recomendación: `README.md`, `docs/recommendation-criteria.md`.
-- Cambios de flujo o UI: `README.md`, `docs/ux-flow.md`.
-- Cambios de storage: `README.md`, `docs/ux-flow.md`, este archivo, `CLAUDE.md`, `GEMINI.md`.
-- Cambios de alcance del MVP: `README.md` y guías de agentes.
+- Fórmulas: `README.md`, `docs/calculation-model.md`, `docs/examples.md`.
+- Recomendación: `README.md`, `docs/recommendation-criteria.md`.
+- Flujo o UI: `README.md`, `docs/ux-flow.md`.
+- Storage: `README.md`, `docs/ux-flow.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`.
+- PDF: `README.md`, `docs/pdf-ticket.md`, `docs/ux-flow.md`, `docs/examples.md`.
 
 ## Ejecutar
 
@@ -181,6 +100,7 @@ npm run dev
 Verificar:
 
 ```bash
+npm test
 npm run lint
 npm run build
 ```

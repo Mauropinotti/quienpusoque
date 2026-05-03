@@ -2,28 +2,27 @@
 
 ## Proyecto
 
-**¿Quién puso qué?** distribuye gastos compartidos de eventos chicos. El MVP corre completamente en el navegador: no hay backend, base de datos ni autenticación.
+**¿Quién puso qué?** distribuye gastos compartidos de eventos chicos. Corre en el navegador: sin backend, sin base de datos y sin autenticación.
 
 ## Regla principal
 
-La lógica de negocio **no va en componentes React**.
-
-Los componentes renderizan formularios, tarjetas y resultados. Las reglas viven en `lib/` y los contratos en `types/`.
+La lógica de negocio **no va en componentes React**. Las reglas viven en `lib/` y los contratos en `types/`.
 
 ## Arquitectura
 
 ```text
 app/page.tsx                estado global y flujo
-components/event/           setup del evento
+components/event/           setup y foto opcional
 components/families/        alta, edición, eliminación y listado
 components/recommendation/  recomendación y selector de criterio
-components/results/         resumen, balances, transferencias y copiar
+components/results/         resumen, PDF, WhatsApp, historial
 components/ui/              Button, Input, Card, Badge
 hooks/                      hooks cliente
 lib/calculations/           funciones puras de cálculo
 lib/formatting/             moneda y porcentaje
 lib/storage/                localStorage defensivo
 lib/text/                   texto para WhatsApp
+lib/pdf/                    ticket PDF final
 types/                      contratos compartidos
 docs/                       documentación técnica y de producto
 ```
@@ -39,120 +38,50 @@ app/page.tsx
   -> componentes por props
 ```
 
-Usar `useMemo` para derivar resultados desde estado cuando corresponda. Evitar `useEffect` para cálculos puros.
+## Reglas clave
 
-## Tipos clave
-
-- `Family`: datos crudos de cada familia.
-- `FamilyWithEligibility`: familia con elegibilidad calculada.
-- `FamilyBalance`: resultado por familia.
-- `Transfer`: transferencia sugerida.
-- `SplitRecommendation`: modo recomendado, confianza, razones y métricas.
-- `LocalEventDraft`: borrador validado para `localStorage`.
-
-## Reglas de negocio
-
-### Elegibilidad
-
-Fuente: `lib/calculations/eligibility.ts`.
-
-- 1 adulto: aporta.
-- 1 menor: no aporta.
-- 2 o más integrantes: aportan.
-
-### Reparto
-
+- 1 adulto aporta.
+- 1 menor no aporta.
+- 2 o más integrantes aportan.
 - `by-family`: partes iguales por familia habilitada.
 - `by-person`: partes iguales por persona habilitada.
-
-### Balance
-
-```text
-balance = paidAmount - expectedShare
-```
-
-El estado resultante (`pays`, `receives`, `balanced`, `guest`) se calcula en `calculateBalances`. La UI no debe recalcularlo.
-
-### Transferencias
-
-`calculateTransfers` toma balances canónicos y genera transferencias entre deudores y acreedores. No acepta familias crudas.
-
-## Recomendación
-
-`recommendSplitMode` compara composición e impacto económico. Si cambiás señales, pesos o textos de razones, actualizá `docs/recommendation-criteria.md`.
+- `balance = paidAmount - expectedShare`.
+- `status` lo calcula `calculateBalances`; la UI no lo recalcula.
 
 ## localStorage
 
-El borrador actual usa:
+El borrador actual usa `quien-puso-que:current-draft`.
 
-```text
-quien-puso-que:current-draft
-```
+El historial cerrado usa `quien-puso-que:closed-events`.
 
-`localEventStorage.ts`:
+Todo acceso debe ser cliente, defensivo y validado. Si storage falla, la app sigue funcionando.
 
-- valida disponibilidad de `window.localStorage`
-- parsea JSON con guardas
-- valida familias, modos y fecha
-- guarda `updatedAt`
-- borra el borrador actual
+## PDF final
 
-`closedEventsStorage.ts`:
+El ticket PDF se genera con `jsPDF` en `lib/pdf/generateEventTicketPdf.ts`.
 
-- usa `quien-puso-que:closed-events`
-- valida snapshots de eventos cerrados
-- guarda hasta 50 eventos
-- permite borrar eventos cerrados individualmente
+Reglas:
 
-`useEventDraft.ts`:
-
-- corre solo en cliente
-- restaura después de hydration
-- evita romper SSR
-- guarda cambios del evento actual
-
-## Evento borrador
-
-Evento en edición. Puede no tener familias, puede no tener criterio confirmado y puede estar incompleto. Se guarda para evitar pérdida de datos al recargar.
-
-## Evento cerrado
-
-Resultado final confirmado que se guarda en el historial local. Es una foto del cálculo: familias, balances, transferencias, recomendación, total y criterio usado.
-
-## Restricciones del MVP
-
-- No backend.
-- No auth.
-- No base de datos.
-- No sincronización entre dispositivos.
-- No PDF todavía.
-- No subida de foto todavía.
-- No dependencias nuevas salvo necesidad clara.
+- No backend para PDF.
+- No subir fotos.
+- No guardar fotos pesadas en `localStorage`.
+- La foto opcional se procesa en el navegador y se usa solo para el PDF actual.
+- Mantener generación estructurada, no screenshots.
+- Si cambia el PDF, actualizar `docs/pdf-ticket.md`.
 
 ## Qué no hacer
 
 - No meter fórmulas en componentes.
 - No acceder a `localStorage` durante SSR.
 - No usar datos recuperados de storage sin validar.
-- No cambiar `types/` sin actualizar todos los consumers.
-- No documentar el ticket PDF ni la subida de foto como terminados.
+- No cambiar `types/` sin actualizar consumers.
+- No persistir imágenes del ticket en historial sin decisión explícita.
 - No cambiar el tono a corporativo rígido: la app es cálida, clara y argentina.
 
-## Cómo modificar cálculos
+## Verificación
 
-1. Empezar por `types/`.
-2. Modificar la función pura en `lib/calculations/`.
-3. Mantener determinismo.
-4. Actualizar pruebas o ejemplos manuales.
-5. Ajustar UI solo si cambia el dato mostrado.
-6. Actualizar docs.
-7. Correr `npm run lint` y `npm run build`.
-
-## Documentación obligatoria ante cambios
-
-- Fórmulas: `docs/calculation-model.md`.
-- Recomendación: `docs/recommendation-criteria.md`.
-- Flujo: `docs/ux-flow.md`.
-- Casos concretos: `docs/examples.md`.
-- Alcance público: `README.md`.
-- Instrucciones para agentes: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`.
+```bash
+npm test
+npm run lint
+npm run build
+```

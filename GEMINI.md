@@ -2,7 +2,7 @@
 
 ## Proyecto
 
-**¿Quién puso qué?** es una app web para repartir gastos de eventos grupales. Calcula quién puso de más, quién paga, quién cobra y qué transferencias conviene hacer.
+**¿Quién puso qué?** es una app web para repartir gastos de eventos grupales. Calcula quién puso de más, quién paga, quién cobra, qué transferencias conviene hacer y genera un ticket PDF final.
 
 ## Tecnología
 
@@ -11,6 +11,7 @@
 - TypeScript
 - Tailwind CSS v4
 - nanoid
+- jsPDF
 - Sin backend
 - Sin base de datos
 - Sin autenticación
@@ -20,76 +21,30 @@
 Separación estricta entre lógica y UI:
 
 - `lib/calculations/`: funciones puras.
+- `lib/pdf/`: generación del ticket PDF.
 - `components/`: renderizado e interacción.
 - `types/`: contratos.
 - `app/page.tsx`: orquestación del flujo.
 
-## Dominio
-
-Una `Family` representa un grupo participante:
-
-- nombre
-- cantidad de integrantes de 1 a 5
-- tipo si tiene 1 integrante (`adult` o `minor`)
-- monto pagado
-- nota opcional
-
 ## Reglas de negocio
-
-### Elegibilidad
 
 - Familia de 1 adulto: paga.
 - Familia de 1 menor: no aporta.
 - Familia de 2 o más integrantes: paga.
-
-La regla vive en `lib/calculations/eligibility.ts`.
-
-### Modos de reparto
-
 - `by-family`: divide el total entre familias habilitadas.
 - `by-person`: divide el total entre personas habilitadas.
+- `balance = paidAmount - expectedShare`.
+- Las transferencias salen de `FamilyBalance[]`, no de familias crudas.
 
-### Balance
+## Storage local
 
-```text
-balance = paidAmount - expectedShare
-```
-
-Estados:
-
-- `receives`: cobra.
-- `pays`: paga.
-- `balanced`: equilibrado.
-- `guest`: no aporta.
-
-### Transferencias
-
-Se calculan desde `FamilyBalance[]`, no desde familias crudas. El algoritmo greedy empareja deudores y acreedores y usa pesos enteros para transferencias.
-
-## Recomendación
-
-`recommendSplitMode` compara ambos criterios con señales ponderadas:
-
-- composición del grupo
-- familias de 1 adulto
-- familias numerosas
-- impacto promedio entre modos
-- impacto máximo entre modos
-- similitud de tamaños
-
-La recomendación no es una obligación: la UI permite elegir manualmente.
-
-## localStorage
-
-El MVP guarda solo el borrador actual:
+Borrador actual:
 
 ```text
 quien-puso-que:current-draft
 ```
 
-Se guarda nombre, familias, modo seleccionado, modo confirmado, aceptación de recomendación, fecha de creación y fecha de última edición.
-
-El historial de eventos cerrados usa:
+Historial:
 
 ```text
 quien-puso-que:closed-events
@@ -102,22 +57,18 @@ Reglas:
 - tolerar errores y storage bloqueado
 - no guardar información sensible
 
-## Evento borrador
+## PDF final
 
-Evento actual en edición. Puede estar incompleto. Sirve para no perder datos al recargar.
+El ticket PDF se genera en cliente con `jsPDF`.
 
-## Evento cerrado
+Reglas:
 
-Evento final confirmado guardado en historial local. Incluye snapshots de familias, balances, transferencias y recomendación.
-
-## Restricciones del MVP
-
-- No backend.
-- No login.
-- No base de datos.
-- No PDF todavía.
-- No subida de foto todavía.
-- No sincronización.
+- no usar backend
+- no subir fotos
+- no guardar imágenes pesadas en `localStorage`
+- la foto opcional se procesa localmente y se usa solo para el PDF actual
+- mantener el PDF como salida estructurada del cálculo
+- actualizar `docs/pdf-ticket.md` ante cambios
 
 ## Qué no debe hacer un agente
 
@@ -125,7 +76,7 @@ Evento final confirmado guardado en historial local. Incluye snapshots de famili
 - No recalcular `status` en componentes.
 - No acceder a `window` o `localStorage` fuera del cliente.
 - No usar datos de storage sin validar.
-- No presentar roadmap como funcionalidad lista.
+- No persistir fotos del ticket innecesariamente.
 - No agregar librerías innecesarias.
 
 ## Documentación a actualizar
@@ -133,5 +84,6 @@ Evento final confirmado guardado en historial local. Incluye snapshots de famili
 - Fórmulas: `docs/calculation-model.md`.
 - Recomendación: `docs/recommendation-criteria.md`.
 - UX: `docs/ux-flow.md`.
+- PDF: `docs/pdf-ticket.md`.
 - Casos: `docs/examples.md`.
 - Resumen público: `README.md`.
