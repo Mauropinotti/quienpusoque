@@ -222,6 +222,7 @@ Para verificar producción:
 
 ```bash
 npm run lint
+npm test
 npm run build
 ```
 
