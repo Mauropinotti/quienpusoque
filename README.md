@@ -2,7 +2,7 @@
 
 Calculadora mobile first para repartir gastos compartidos en reuniones, asados, viajes y eventos chicos.
 
-La app puede ser divertida. La cuenta no.
+Cuentas claras siempre!
 
 Deploy público: `https://quien-puso-que.vercel.app` (placeholder hasta publicar el primer deploy).
 
@@ -89,7 +89,7 @@ No decide por capricho: calcula métricas del grupo y genera señales con peso.
 - Muchas familias grandes favorecen `by-family`.
 - Si el impacto económico entre criterios es alto, favorece `by-person`.
 - Si el impacto es bajo y los tamaños son parecidos, favorece `by-family`.
-- Si no hay una señal fuerte, sugiere `by-family` por simpleza y con confianza baja.
+- Si no hay una señal fuerte, sugiere `by-family` por simpleza y con una señal baja.
 
 La recomendación es una ayuda. El usuario siempre puede elegir otro criterio.
 
@@ -183,7 +183,7 @@ Incluye:
 - familias cargadas y habilitadas
 - personas habilitadas
 - criterio usado
-- criterio recomendado y confianza
+- criterio recomendado
 - explicación breve del criterio
 - tabla de familias, cuotas, balances y estados
 - familias no aportantes

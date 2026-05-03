@@ -20,7 +20,7 @@ export function EventSetupCard({
   return (
     <Card padding="lg" className="border-orange-100">
       <p className="text-sm font-semibold text-orange-700">
-        La app puede ser divertida. La cuenta no.
+        Cuentas claras siempre!
       </p>
       <h2 className="mt-2 text-2xl font-black text-stone-950">
         Creá el evento

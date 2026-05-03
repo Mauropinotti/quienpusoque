@@ -56,7 +56,6 @@ types/pdf.ts
    - personas habilitadas
    - criterio usado
    - criterio recomendado
-   - confianza
 6. Explicación breve del criterio.
 7. Tabla de familias:
    - nombre
@@ -69,7 +68,8 @@ types/pdf.ts
 8. Familias no aportantes.
 9. Transferencias sugeridas.
 10. Nota de cierre.
-11. Firma visual: `La app puede ser divertida. La cuenta no.`
+11. Firma visual: `Cuentas claras siempre!`
+12. Pie de página: `desarrollado por MauroHP - Lista 127 8B 2026.-`
 
 ## Foto opcional
 

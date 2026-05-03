@@ -15,8 +15,8 @@ interface RecommendationCardProps {
 }
 
 const confidenceLabel = {
-  high: "Confianza alta",
-  medium: "Confianza media",
+  high: "Sugerencia fuerte",
+  medium: "Sugerencia media",
   low: "A revisar",
 };
 

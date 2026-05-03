@@ -6,9 +6,9 @@ import { formatCurrency } from "@/lib/formatting/formatCurrency";
 
 const PAGE_WIDTH = 210;
 const PAGE_HEIGHT = 297;
-const MARGIN = 14;
+const MARGIN = 10;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
-const LINE_HEIGHT = 5.2;
+const LINE_HEIGHT = 4.2;
 
 const COLOR = {
   orange: "#ea580c",
@@ -124,7 +124,7 @@ function addFooter(doc: jsPDF) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(COLOR.stone500);
-    doc.text("La app puede ser divertida. La cuenta no.", MARGIN, PAGE_HEIGHT - 8);
+    doc.text("desarrollado por MauroHP - Lista 127 8B 2026.-", MARGIN, PAGE_HEIGHT - 8);
     doc.text(`Página ${page} de ${pageCount}`, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 8, {
       align: "right",
     });
@@ -132,28 +132,28 @@ function addFooter(doc: jsPDF) {
 }
 
 function ensureSpace(doc: jsPDF, y: number, needed: number): number {
-  if (y + needed <= PAGE_HEIGHT - 20) return y;
+  if (y + needed <= PAGE_HEIGHT - 18) return y;
   doc.addPage();
   return MARGIN;
 }
 
 function addSectionTitle(doc: jsPDF, title: string, y: number): number {
-  y = ensureSpace(doc, y, 12);
+  y = ensureSpace(doc, y, 9);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
+  doc.setFontSize(11);
   doc.setTextColor(COLOR.stone950);
   doc.text(title, MARGIN, y);
-  return y + 7;
+  return y + 5;
 }
 
 function addParagraph(doc: jsPDF, text: string, y: number): number {
   const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
   y = ensureSpace(doc, y, lines.length * LINE_HEIGHT + 3);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  doc.setFontSize(8.5);
   doc.setTextColor(COLOR.stone700);
   doc.text(lines, MARGIN, y);
-  return y + lines.length * LINE_HEIGHT + 3;
+  return y + lines.length * LINE_HEIGHT + 2;
 }
 
 function addSummaryGrid(doc: jsPDF, data: EventTicketPdfData, y: number): number {
@@ -161,9 +161,6 @@ function addSummaryGrid(doc: jsPDF, data: EventTicketPdfData, y: number): number
   const recommended = data.recommendation
     ? modeLabel(data.recommendation.recommendedMode)
     : "sin recomendación";
-  const confidence = data.recommendation
-    ? data.recommendation.confidence
-    : "sin dato";
   const items = [
     ["Gasto total", formatCurrency(totalAmount, data.currency)],
     ["Familias cargadas", String(data.families.length)],
@@ -171,13 +168,12 @@ function addSummaryGrid(doc: jsPDF, data: EventTicketPdfData, y: number): number
     ["Personas habilitadas", String(getEligiblePersonCount(data))],
     ["Criterio usado", modeLabel(data.splitMode)],
     ["Recomendado", recommended],
-    ["Confianza", confidence],
   ];
 
   const columns = 2;
   const gap = 4;
   const boxWidth = (CONTENT_WIDTH - gap) / columns;
-  const boxHeight = 18;
+  const boxHeight = 14;
 
   for (let index = 0; index < items.length; index += 1) {
     y = ensureSpace(doc, y, boxHeight + 4);
@@ -190,11 +186,11 @@ function addSummaryGrid(doc: jsPDF, data: EventTicketPdfData, y: number): number
     doc.setDrawColor("#fed7aa");
     doc.roundedRect(x, boxY, boxWidth, boxHeight, 2, 2, "FD");
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setTextColor(COLOR.stone500);
     doc.text(items[index][0], x + 3, boxY + 6);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
+    doc.setFontSize(9.5);
     doc.setTextColor(COLOR.stone950);
     doc.text(items[index][1], x + 3, boxY + 13);
 
@@ -208,19 +204,19 @@ function addSummaryGrid(doc: jsPDF, data: EventTicketPdfData, y: number): number
 
 function addFamiliesTable(doc: jsPDF, data: EventTicketPdfData, y: number): number {
   const headers = ["Familia", "Int.", "Tipo", "Pagó", "Cuota", "Balance", "Estado"];
-  const widths = [37, 12, 18, 28, 28, 28, 28];
-  const rowHeight = 9;
+  const widths = [42, 10, 16, 30, 30, 30, 30];
+  const rowHeight = 7;
 
   y = ensureSpace(doc, y, rowHeight * 2);
   doc.setFillColor(COLOR.stone950);
   doc.rect(MARGIN, y, CONTENT_WIDTH, rowHeight, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor("#ffffff");
 
   let x = MARGIN + 2;
   headers.forEach((header, index) => {
-    doc.text(header, x, y + 6);
+    doc.text(header, x, y + 5);
     x += widths[index];
   });
   y += rowHeight;
@@ -246,14 +242,14 @@ function addFamiliesTable(doc: jsPDF, data: EventTicketPdfData, y: number): numb
 
     x = MARGIN + 2;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.6);
+    doc.setFontSize(6.6);
     doc.setTextColor(COLOR.stone700);
 
     row.forEach((cell, cellIndex) => {
       const maxWidth = widths[cellIndex] - 2;
       const text = doc.splitTextToSize(cell, maxWidth)[0] ?? "";
       if (cellIndex === 6) doc.setTextColor(statusColor(balance.status));
-      doc.text(text, x, y + 6);
+      doc.text(text, x, y + 5);
       if (cellIndex === 6) doc.setTextColor(COLOR.stone700);
       x += widths[cellIndex];
     });
@@ -272,7 +268,7 @@ function addNonContributors(doc: jsPDF, data: EventTicketPdfData, y: number): nu
   guests.forEach((guest) => {
     y = ensureSpace(doc, y, 7);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(8.5);
     doc.setTextColor(COLOR.stone700);
     doc.text(`${guest.name}: Menor sin cargo`, MARGIN, y);
     y += 6;
@@ -291,7 +287,7 @@ function addTransfers(doc: jsPDF, data: EventTicketPdfData, y: number): number {
   data.transfers.forEach((transfer) => {
     y = ensureSpace(doc, y, 8);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(8.5);
     doc.setTextColor(COLOR.stone700);
     doc.text(
       `${transfer.fromFamilyName} le transfiere ${formatCurrency(
@@ -301,7 +297,7 @@ function addTransfers(doc: jsPDF, data: EventTicketPdfData, y: number): number {
       MARGIN,
       y
     );
-    y += 6;
+    y += 5;
   });
 
   return y + 2;
@@ -310,11 +306,11 @@ function addTransfers(doc: jsPDF, data: EventTicketPdfData, y: number): number {
 function addPhoto(doc: jsPDF, data: EventTicketPdfData, y: number): number {
   if (!data.photo?.dataUrl) return y;
 
-  y = ensureSpace(doc, y, 66);
+  y = ensureSpace(doc, y, 40);
 
   try {
-    doc.addImage(data.photo.dataUrl, "JPEG", MARGIN, y, CONTENT_WIDTH, 62, undefined, "FAST");
-    return y + 68;
+    doc.addImage(data.photo.dataUrl, "JPEG", MARGIN, y, CONTENT_WIDTH, 36, undefined, "FAST");
+    return y + 40;
   } catch {
     return addParagraph(
       doc,
@@ -337,27 +333,27 @@ export function generateEventTicketPdf(data: EventTicketPdfData): void {
   let y = MARGIN;
 
   doc.setFillColor(COLOR.orange);
-  doc.roundedRect(MARGIN, y, CONTENT_WIDTH, 22, 3, 3, "F");
+  doc.roundedRect(MARGIN, y, CONTENT_WIDTH, 18, 3, 3, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
+  doc.setFontSize(15);
   doc.setTextColor("#ffffff");
-  doc.text(data.appName, MARGIN + 5, y + 9);
+  doc.text(data.appName, MARGIN + 5, y + 7);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("Ticket final de cálculo", MARGIN + 5, y + 16);
-  y += 30;
+  doc.setFontSize(8.5);
+  doc.text("Ticket final de cálculo", MARGIN + 5, y + 14);
+  y += 24;
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
+  doc.setFontSize(15);
   doc.setTextColor(COLOR.stone950);
   doc.text(data.eventName || "Evento sin nombre", MARGIN, y);
-  y += 8;
+  y += 6;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  doc.setFontSize(8.5);
   doc.setTextColor(COLOR.stone500);
   doc.text(`Generado el ${formatDate(data.generatedAt)}`, MARGIN, y);
-  y += 8;
+  y += 6;
 
   y = addPhoto(doc, data, y);
   y = addSectionTitle(doc, "Resumen general", y);
@@ -374,6 +370,7 @@ export function generateEventTicketPdf(data: EventTicketPdfData): void {
     "Este ticket fue generado localmente con ¿Quién puso qué?. La app calcula el reparto según los datos cargados por el usuario.",
     y
   );
+  y = addParagraph(doc, "Cuentas claras siempre!", y);
 
   addFooter(doc);
   doc.save(buildEventTicketPdfFileName(data.eventName, data.generatedAt));

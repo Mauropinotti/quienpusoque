@@ -236,7 +236,6 @@ Resumen general
 - Personas habilitadas: 10
 - Criterio usado: por familia
 - Recomendado: por familia
-- Confianza: low / medium / high
 
 Criterio usado
 Se usó reparto por familia según la recomendación o elección del usuario.
@@ -251,7 +250,8 @@ Los López le transfiere $4.000 a Los García
 Los Rodríguez le transfiere $1.000 a Los Fernández
 
 Este ticket fue generado localmente con ¿Quién puso qué?.
-La app puede ser divertida. La cuenta no.
+Cuentas claras siempre!
+desarrollado por MauroHP - Lista 127 8B 2026.-
 ```
 
 Si el usuario selecciona una foto, aparece arriba como portada simple. La imagen se usa solo para el PDF actual.

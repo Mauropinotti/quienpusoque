@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { AppFooter } from "@/components/layout/AppFooter";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -49,7 +50,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full bg-[#fdf8f3] text-stone-950">{children}</body>
+      <body className="flex min-h-full flex-col bg-[#fdf8f3] text-stone-950">
+        <div className="flex-1">{children}</div>
+        <AppFooter />
+      </body>
     </html>
   );
 }

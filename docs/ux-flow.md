@@ -66,7 +66,7 @@ Objetivo: explicar el criterio sugerido y permitir decisión manual.
 UI:
 
 - recomendación destacada
-- confianza
+- señal visual de fuerza de la sugerencia
 - razones breves
 - selector `Por familia` / `Por persona`
 - botón `Ver resultado`
