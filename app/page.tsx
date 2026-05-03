@@ -94,6 +94,7 @@ export default function HomePage() {
   const [savedClosedEventId, setSavedClosedEventId] = useState<string | null>(
     null
   );
+  const [historySaveError, setHistorySaveError] = useState("");
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   const restoreDraft = useCallback((draft: LocalEventDraft) => {
@@ -123,6 +124,14 @@ export default function HomePage() {
     return recommendSplitMode(computeAllEligibility(eventData.families));
   }, [eventData.families]);
 
+  const eligibleFamilyCount = useMemo(
+    () =>
+      computeAllEligibility(eventData.families).filter(
+        (family) => family.isEligibleToPay
+      ).length,
+    [eventData.families]
+  );
+
   const calculation = useMemo(() => {
     if (eventData.families.length < 2) return null;
 
@@ -144,6 +153,7 @@ export default function HomePage() {
   const markDraftChanged = useCallback(() => {
     setRecommendationAccepted(null);
     setSavedClosedEventId(null);
+    setHistorySaveError("");
   }, []);
 
   const loadDemo = useCallback(() => {
@@ -157,6 +167,7 @@ export default function HomePage() {
     setSelectedMode("by-family");
     setRecommendationAccepted(null);
     setSavedClosedEventId(null);
+    setHistorySaveError("");
     setStep("families");
   }, []);
 
@@ -214,6 +225,7 @@ export default function HomePage() {
       recommendation ? selectedMode === recommendation.recommendedMode : null
     );
     setSavedClosedEventId(null);
+    setHistorySaveError("");
     setStep("results");
   }, [recommendation, selectedMode]);
 
@@ -236,9 +248,16 @@ export default function HomePage() {
       recommendationSnapshot: recommendation,
     };
 
-    saveClosedEvent(closedEvent);
-    setSavedClosedEventId(closedEvent.id);
-    setHistoryRefreshKey((current) => current + 1);
+    const nextEvents = saveClosedEvent(closedEvent);
+    if (nextEvents.some((event) => event.id === closedEvent.id)) {
+      setSavedClosedEventId(closedEvent.id);
+      setHistorySaveError("");
+      setHistoryRefreshKey((current) => current + 1);
+    } else {
+      setHistorySaveError(
+        "No se pudo guardar en el historial. Revisá si el navegador permite usar localStorage."
+      );
+    }
   }, [calculation, eventCreatedAt, eventData, recommendation]);
 
   const handleReset = useCallback(() => {
@@ -249,6 +268,7 @@ export default function HomePage() {
     setSelectedMode("by-family");
     setRecommendationAccepted(null);
     setSavedClosedEventId(null);
+    setHistorySaveError("");
   }, [clearDraft]);
 
   const stepIndex = STEPS.indexOf(step);
@@ -263,6 +283,7 @@ export default function HomePage() {
         {STEPS.map((currentStep, index) => (
           <div
             key={currentStep}
+            aria-label={`Paso ${index + 1} de ${STEPS.length}`}
             className={[
               "h-2 rounded-full transition-all duration-300",
               currentStep === step
@@ -304,6 +325,7 @@ export default function HomePage() {
             <FamilyForm onSubmit={handleAddFamily} />
             <FamilyList
               families={eventData.families}
+              eligibleFamilyCount={eligibleFamilyCount}
               currency={eventData.currency}
               onRemove={handleRemoveFamily}
               onUpdate={handleUpdateFamily}
@@ -336,6 +358,7 @@ export default function HomePage() {
             balances={calculation.balances}
             transfers={calculation.transfers}
             isSavedToHistory={savedClosedEventId !== null}
+            historySaveError={historySaveError}
             onSaveClosedEvent={handleSaveClosedEvent}
             onEditFamilies={() => setStep("families")}
             onReset={handleReset}

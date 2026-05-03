@@ -13,6 +13,7 @@ import {
   saveCurrentEventDraft,
 } from "@/lib/storage/localEventStorage";
 import {
+  clearClosedEvents,
   deleteClosedEvent,
   readClosedEvents,
   saveClosedEvent,
@@ -395,6 +396,14 @@ describe("closedEventsStorage", () => {
     const events = deleteClosedEvent("closed-1");
 
     expect(events).toEqual([]);
+    expect(readClosedEvents()).toEqual([]);
+  });
+
+  it("borra todo el historial de eventos cerrados", () => {
+    installWindowWithStorage();
+    saveClosedEvent(buildClosedEvent());
+
+    expect(clearClosedEvents()).toEqual([]);
     expect(readClosedEvents()).toEqual([]);
   });
 });

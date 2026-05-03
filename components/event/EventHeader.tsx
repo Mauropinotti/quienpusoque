@@ -5,6 +5,9 @@ interface EventHeaderProps {
 export function EventHeader({ eventName }: EventHeaderProps) {
   return (
     <header className="px-4 pb-5 pt-7 text-center">
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-600 text-xl font-black text-white shadow-sm">
+        Q
+      </div>
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-700">
         Gastos compartidos
       </p>
@@ -16,8 +19,8 @@ export function EventHeader({ eventName }: EventHeaderProps) {
           {eventName}
         </p>
       ) : (
-        <p className="mt-2 text-sm text-stone-500">
-          Para repartir claro después de juntarse.
+        <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-stone-600">
+          Repartí gastos sin planillas, sin vueltas y con números claros.
         </p>
       )}
     </header>

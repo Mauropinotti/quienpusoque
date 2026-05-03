@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 
@@ -8,15 +8,38 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "¿Quién puso qué?",
+  metadataBase: new URL("https://quien-puso-que.vercel.app"),
+  title: {
+    default: "¿Quién puso qué?",
+    template: "%s | ¿Quién puso qué?",
+  },
   description:
-    "Distribuí gastos compartidos en asados, reuniones y salidas grupales. La matemática no perdona, pero reparte justo.",
+    "Calculadora mobile first para repartir gastos compartidos, ver transferencias y copiar el resumen para WhatsApp.",
+  applicationName: "¿Quién puso qué?",
   openGraph: {
     title: "¿Quién puso qué?",
-    description: "Calculá quién puso de más y qué transferencias conviene hacer.",
+    description:
+      "Calculá quién puso de más, quién paga y qué transferencias conviene hacer.",
     locale: "es_AR",
     type: "website",
+    url: "https://quien-puso-que.vercel.app",
+    siteName: "¿Quién puso qué?",
   },
+  twitter: {
+    card: "summary",
+    title: "¿Quién puso qué?",
+    description:
+      "Repartí gastos compartidos desde el celular y copiá el resumen para WhatsApp.",
+  },
+  icons: {
+    icon: "/icon.svg",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#ea580c",
 };
 
 export default function RootLayout({
@@ -26,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-[#fdf8f3]">{children}</body>
+      <body className="min-h-full bg-[#fdf8f3] text-stone-950">{children}</body>
     </html>
   );
 }

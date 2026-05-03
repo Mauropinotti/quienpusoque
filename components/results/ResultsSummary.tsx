@@ -14,6 +14,7 @@ interface ResultsSummaryProps {
   balances: FamilyBalance[];
   transfers: Transfer[];
   isSavedToHistory?: boolean;
+  historySaveError?: string;
   onSaveClosedEvent: () => void;
   onEditFamilies: () => void;
   onReset: () => void;
@@ -26,12 +27,14 @@ export function ResultsSummary({
   balances,
   transfers,
   isSavedToHistory = false,
+  historySaveError,
   onSaveClosedEvent,
   onEditFamilies,
   onReset,
 }: ResultsSummaryProps) {
   const total = balances.reduce((sum, balance) => sum + balance.paidAmount, 0);
   const modeLabel = splitMode === "by-family" ? "por familia" : "por persona";
+  const hasNoTotal = total === 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -42,6 +45,17 @@ export function ResultsSummary({
         </p>
         <p className="mt-2 text-sm text-orange-900">Reparto {modeLabel}</p>
       </section>
+
+      {hasNoTotal && (
+        <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">
+            El gasto total quedó en cero.
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            No hay nada para transferir. Si faltó cargar un gasto, volvé a editar familias.
+          </p>
+        </section>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <Button variant="secondary" fullWidth onClick={onEditFamilies}>
@@ -60,6 +74,11 @@ export function ResultsSummary({
       >
         {isSavedToHistory ? "Guardado en historial" : "Guardar evento cerrado"}
       </Button>
+      {historySaveError && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {historySaveError}
+        </p>
+      )}
 
       <section className="flex flex-col gap-2">
         <h3 className="text-lg font-bold text-stone-900">Balances</h3>

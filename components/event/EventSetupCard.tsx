@@ -15,11 +15,19 @@ export function EventSetupCard({
   onEventNameChange,
   onNext,
 }: EventSetupCardProps) {
+  const isReady = eventName.trim().length > 0;
+
   return (
-    <Card padding="lg">
-      <h2 className="text-2xl font-black text-stone-950">Crear evento</h2>
+    <Card padding="lg" className="border-orange-100">
+      <p className="text-sm font-semibold text-orange-700">
+        La app puede ser divertida. La cuenta no.
+      </p>
+      <h2 className="mt-2 text-2xl font-black text-stone-950">
+        Creá el evento
+      </h2>
       <p className="mt-2 text-sm leading-6 text-stone-600">
-        Poné un nombre simple. Después cargás quién vino, cuánto puso y listo.
+        Poné un nombre simple. Después cargás quién vino, cuánto puso y cerrás
+        el reparto con transferencias claras.
       </p>
       <div className="mt-5 flex flex-col gap-4">
         <Input
@@ -27,8 +35,9 @@ export function EventSetupCard({
           placeholder="Ej: Asado del sábado"
           value={eventName}
           onChange={(e) => onEventNameChange(e.target.value)}
+          hint={!isReady ? "Necesitamos un nombre para guardar el borrador." : undefined}
         />
-        <Button fullWidth size="lg" onClick={onNext} disabled={!eventName.trim()}>
+        <Button fullWidth size="lg" onClick={onNext} disabled={!isReady}>
           Cargar familias
         </Button>
       </div>

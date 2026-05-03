@@ -33,8 +33,20 @@ export function FamilyForm({
     initialFamily ? String(initialFamily.paidAmount) : ""
   );
   const [notes, setNotes] = useState(initialFamily?.notes ?? "");
+  const [submitted, setSubmitted] = useState(false);
 
   const parsedAmount = Number(paidAmount);
+  const nameError =
+    submitted && name.trim().length === 0 ? "Poné un nombre para identificarla." : "";
+  const typeError =
+    submitted && members === 1 && singleMemberType === null
+      ? "Indicá si es adulto o menor."
+      : "";
+  const amountError =
+    submitted &&
+    (paidAmount.trim() === "" || Number.isNaN(parsedAmount) || parsedAmount < 0)
+      ? "Ingresá un monto válido. Puede ser 0."
+      : "";
   const isValid =
     name.trim().length > 0 &&
     members >= 1 &&
@@ -53,6 +65,7 @@ export function FamilyForm({
   };
 
   const handleSubmit = () => {
+    setSubmitted(true);
     if (!isValid) return;
 
     onSubmit({
@@ -83,6 +96,7 @@ export function FamilyForm({
           placeholder="Ej: Los García"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          error={nameError}
         />
 
         <div>
@@ -98,6 +112,7 @@ export function FamilyForm({
                   setMembers(number);
                   if (number !== 1) setSingleMemberType(null);
                 }}
+                aria-pressed={members === number}
                 className={[
                   "min-h-12 rounded-lg border text-base font-bold transition-all focus:outline-none focus:ring-2 focus:ring-orange-400",
                   members === number
@@ -112,10 +127,17 @@ export function FamilyForm({
         </div>
 
         {members === 1 && (
-          <SingleMemberTypeSelector
-            value={singleMemberType}
-            onChange={setSingleMemberType}
-          />
+          <div>
+            <SingleMemberTypeSelector
+              value={singleMemberType}
+              onChange={setSingleMemberType}
+            />
+            {typeError && (
+              <p className="mt-2 text-xs font-medium text-red-700">
+                {typeError}
+              </p>
+            )}
+          </div>
         )}
 
         <Input
@@ -128,6 +150,7 @@ export function FamilyForm({
           value={paidAmount}
           onChange={(e) => setPaidAmount(e.target.value)}
           hint="Ingresá 0 si no puso nada."
+          error={amountError}
         />
 
         <Input

@@ -124,6 +124,7 @@ export function EventHistoryCard({ event, onDelete }: EventHistoryCardProps) {
             size="sm"
             fullWidth
             onClick={() => setIsExpanded((current) => !current)}
+            aria-expanded={isExpanded}
           >
             {isExpanded ? "Ocultar" : "Ver detalle"}
           </Button>

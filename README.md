@@ -4,6 +4,8 @@ Calculadora mobile first para repartir gastos compartidos en reuniones, asados, 
 
 La app puede ser divertida. La cuenta no.
 
+Deploy público: `https://quien-puso-que.vercel.app` (placeholder hasta publicar el primer deploy).
+
 ## Descripción breve
 
 **¿Quién puso qué?** ayuda a responder, sin planillas ni discusiones eternas, quién pagó de más, quién tiene que poner plata y qué transferencias conviene hacer para cerrar un evento grupal.
@@ -246,7 +248,7 @@ No requiere variables de entorno para el MVP.
 - [x] Resumen para WhatsApp con fallback de copiado.
 - [x] Borrador local en `localStorage`.
 - [x] Historial local de eventos cerrados.
-- [ ] Tests automatizados.
+- [x] Tests automatizados.
 - [ ] Ticket PDF final.
 
 ## Roadmap

@@ -31,10 +31,12 @@ export function Button({
   fullWidth = false,
   className = "",
   children,
+  type = "button",
   ...props
 }: ButtonProps) {
   return (
     <button
+      type={type}
       {...props}
       className={[
         "min-h-11 rounded-lg font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",

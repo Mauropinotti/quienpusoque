@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/formatting/formatCurrency";
 
 interface FamilyListProps {
   families: Family[];
+  eligibleFamilyCount: number;
   currency?: string;
   onRemove: (id: string) => void;
   onUpdate: (family: Family) => void;
@@ -15,13 +16,16 @@ interface FamilyListProps {
 
 export function FamilyList({
   families,
+  eligibleFamilyCount,
   currency = "ARS",
   onRemove,
   onUpdate,
   onCalculate,
 }: FamilyListProps) {
-  const canCalculate = families.length >= 2;
+  const canCalculate = families.length >= 2 && eligibleFamilyCount >= 2;
   const totalPaid = families.reduce((sum, family) => sum + family.paidAmount, 0);
+  const hasFamilies = families.length > 0;
+  const hasNoTotal = hasFamilies && totalPaid === 0;
 
   return (
     <section className="flex flex-col gap-3">
@@ -48,13 +52,35 @@ export function FamilyList({
         )}
       </div>
 
-      {families.length === 0 && (
+      {!hasFamilies && (
         <div className="rounded-lg border border-dashed border-orange-200 bg-orange-50/60 px-4 py-5 text-center">
           <p className="text-sm font-medium text-stone-700">
             Todavía no hay familias cargadas.
           </p>
           <p className="mt-1 text-sm text-stone-500">
-            Agregá la primera para armar el reparto.
+            Agregá la primera para empezar a armar la cuenta.
+          </p>
+        </div>
+      )}
+
+      {hasNoTotal && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-900">
+            Todavía no hay gasto cargado.
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            Podés calcular igual, pero el resultado va a quedar en cero.
+          </p>
+        </div>
+      )}
+
+      {families.length >= 2 && eligibleFamilyCount < 2 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-900">
+            Falta otra familia habilitada para aportar.
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            Los menores solos no entran en el reparto. Sumá otra familia o cambiá el tipo.
           </p>
         </div>
       )}
@@ -73,7 +99,7 @@ export function FamilyList({
         <Button fullWidth size="lg" onClick={onCalculate} disabled={!canCalculate}>
           Ver recomendación
         </Button>
-        {!canCalculate && families.length > 0 && (
+        {!canCalculate && families.length === 1 && (
           <p className="mt-2 text-center text-xs text-stone-500">
             Agregá al menos una familia más para calcular.
           </p>

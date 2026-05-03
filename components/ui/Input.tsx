@@ -9,6 +9,8 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export function Input({ label, error, hint, className = "", id, ...props }: InputProps) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
+  const descriptionId = `${inputId}-description`;
+  const hasDescription = Boolean(error || hint);
   return (
     <div className="flex flex-col gap-1">
       {label && (
@@ -18,6 +20,8 @@ export function Input({ label, error, hint, className = "", id, ...props }: Inpu
       )}
       <input
         id={inputId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={hasDescription ? descriptionId : undefined}
         {...props}
         className={[
           "w-full min-h-12 rounded-lg border px-4 py-3 text-base text-stone-800 placeholder-stone-400 transition focus:outline-none focus:ring-2 focus:ring-orange-400",
@@ -29,8 +33,16 @@ export function Input({ label, error, hint, className = "", id, ...props }: Inpu
           .filter(Boolean)
           .join(" ")}
       />
-      {hint && !error && <p className="text-xs text-stone-500">{hint}</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {hint && !error && (
+        <p id={descriptionId} className="text-xs text-stone-500">
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={descriptionId} className="text-xs font-medium text-red-700">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

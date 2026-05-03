@@ -263,3 +263,8 @@ export function deleteClosedEvent(eventId: string): ClosedEvent[] {
   writeClosedEvents(nextEvents);
   return nextEvents;
 }
+
+export function clearClosedEvents(): ClosedEvent[] {
+  writeClosedEvents([]);
+  return [];
+}
