@@ -8,6 +8,14 @@ La app está pensada para usarse desde el celular, en una mesa, con poca pacienc
 setup -> families -> recommendation -> results
 ```
 
+La app incluye una ruta de ayuda visible:
+
+```text
+/ayuda
+```
+
+El link `¿Cómo funciona?` aparece en el header principal y lleva a una guía breve para usuarios no técnicos.
+
 ## 1. Setup
 
 Objetivo: crear el evento.
@@ -18,6 +26,7 @@ UI:
 - input de nombre del evento
 - botón para avanzar a familias
 - acción para probar datos de ejemplo
+- link visible a la ayuda
 
 Reglas:
 
@@ -186,3 +195,18 @@ Si `localStorage` está vacío, se muestra un estado vacío y el flujo principal
 - La foto del PDF no se guarda para futuras sesiones.
 - No hay sincronización entre dispositivos.
 - No hay modo offline formal, aunque el borrador local ayuda si la página ya cargó.
+
+## Ayuda para usuarios
+
+La página `/ayuda` explica:
+
+- qué hace la app
+- cómo crear un evento
+- cómo cargar familias
+- reglas para adulto / menor
+- quién paga y quién no paga
+- diferencia entre reparto por familia y por persona
+- balances, cobros, pagos y transferencias
+- salidas: pantalla, WhatsApp, PDF e historial local
+
+El botón final vuelve al flujo principal. Si hay borrador local, el texto indica `Ir a realizar el cálculo`; si no lo hay, indica `Generar el primer cálculo`.

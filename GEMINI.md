@@ -23,6 +23,7 @@ Separación estricta entre lógica y UI:
 - `lib/calculations/`: funciones puras.
 - `lib/pdf/`: generación del ticket PDF.
 - `components/`: renderizado e interacción.
+- `components/help/`: ayuda visible para usuarios finales.
 - `types/`: contratos.
 - `app/page.tsx`: orquestación del flujo.
 
@@ -77,6 +78,7 @@ Reglas:
 - No acceder a `window` o `localStorage` fuera del cliente.
 - No usar datos de storage sin validar.
 - No persistir fotos del ticket innecesariamente.
+- No convertir la ayuda en documentación técnica ni recalcular reglas ahí.
 - No agregar librerías innecesarias.
 
 ## Documentación a actualizar
@@ -85,5 +87,6 @@ Reglas:
 - Recomendación: `docs/recommendation-criteria.md`.
 - UX: `docs/ux-flow.md`.
 - PDF: `docs/pdf-ticket.md`.
+- Ayuda: `docs/ux-flow.md` y `components/help/`.
 - Casos: `docs/examples.md`.
 - Resumen público: `README.md`.

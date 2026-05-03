@@ -16,6 +16,7 @@ components/event/           setup y foto opcional
 components/families/        alta, edición, eliminación y listado
 components/recommendation/  recomendación y selector de criterio
 components/results/         resumen, PDF, WhatsApp, historial
+components/help/            ayuda visible para usuarios finales
 components/ui/              Button, Input, Card, Badge
 hooks/                      hooks cliente
 lib/calculations/           funciones puras de cálculo
@@ -76,6 +77,7 @@ Reglas:
 - No usar datos recuperados de storage sin validar.
 - No cambiar `types/` sin actualizar consumers.
 - No persistir imágenes del ticket en historial sin decisión explícita.
+- No poner lógica de cálculo dentro de la ayuda; solo describe el funcionamiento.
 - No cambiar el tono a corporativo rígido: la app es cálida, clara y argentina.
 
 ## Verificación

@@ -26,6 +26,7 @@
 - `lib/storage/`: acceso defensivo a `localStorage`.
 - `hooks/`: coordinación cliente, por ejemplo `useEventDraft`.
 - `docs/`: documentación funcional y técnica.
+- `app/ayuda/page.tsx` y `components/help/`: ayuda visible para usuarios finales.
 
 ## Reglas de negocio
 
@@ -81,6 +82,7 @@ Reglas:
 - No persistir fotos del ticket sin decisión explícita.
 - No agregar dependencias por conveniencia menor.
 - No presentar roadmap como funcionalidad hecha.
+- No convertir la ayuda en documentación técnica ni duplicar lógica de cálculo.
 
 ## Documentación a actualizar ante cambios
 
@@ -89,6 +91,7 @@ Reglas:
 - Flujo o UI: `README.md`, `docs/ux-flow.md`.
 - Storage: `README.md`, `docs/ux-flow.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`.
 - PDF: `README.md`, `docs/pdf-ticket.md`, `docs/ux-flow.md`, `docs/examples.md`.
+- Ayuda de usuario: `README.md`, `docs/ux-flow.md`, `components/help/`.
 
 ## Ejecutar
 

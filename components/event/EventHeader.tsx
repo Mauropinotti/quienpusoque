@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 interface EventHeaderProps {
   eventName: string;
 }
@@ -23,6 +25,12 @@ export function EventHeader({ eventName }: EventHeaderProps) {
           Repartí gastos sin planillas, sin vueltas y con números claros.
         </p>
       )}
+      <Link
+        href="/ayuda"
+        className="mt-4 inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-400"
+      >
+        ¿Cómo funciona?
+      </Link>
     </header>
   );
 }

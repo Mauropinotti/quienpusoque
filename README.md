@@ -44,6 +44,8 @@ Esta app convierte esos datos en:
 7. Copiás el resumen para WhatsApp.
 8. Descargás el ticket PDF final.
 
+La app también incluye una ayuda visible en `/ayuda`, pensada para usuarios no técnicos. Explica cómo cargar familias, cuándo una familia aporta, cómo se elige el criterio y cómo leer balances y transferencias.
+
 ## Familias de un solo integrante
 
 La regla especial vive en `lib/calculations/eligibility.ts`.
@@ -274,6 +276,7 @@ No requiere variables de entorno para el MVP.
 - [x] Historial local de eventos cerrados.
 - [x] Tests automatizados.
 - [x] Ticket PDF final con foto opcional local.
+- [x] Ayuda visible para usuarios finales.
 
 ## Roadmap
 
