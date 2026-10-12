@@ -66,6 +66,7 @@ export function FamilyForm({
     setSingleMemberType(null);
     setPaidAmount("");
     setNotes("");
+    setSubmitted(false);
   };
 
   const handleSubmit = () => {
