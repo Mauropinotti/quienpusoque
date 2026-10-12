@@ -1,5 +1,6 @@
 import type { EventData } from "@/types/event";
 import type { Family, SingleMemberType, SplitMode } from "@/types/family";
+import { isSingleMinor } from "@/lib/calculations/eligibility";
 
 export const CURRENT_DRAFT_STORAGE_KEY = "quien-puso-que:current-draft";
 
@@ -110,7 +111,10 @@ function parseDraft(value: unknown): LocalEventDraft | null {
     eventName,
     currency,
     createdAt: typeof createdAt === "string" ? createdAt : updatedAt,
-    families,
+    // Borradores anteriores a la regla pueden traer monto cargado en un menor solo.
+    families: (families as Family[]).map((family) =>
+      isSingleMinor(family) ? { ...family, paidAmount: 0 } : family
+    ),
     selectedMode,
     splitMode,
     recommendationAccepted,

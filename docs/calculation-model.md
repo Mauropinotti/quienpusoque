@@ -57,7 +57,7 @@ Una familia no elegible queda con:
 - `balance = paidAmount`
 - `status = "guest"`
 
-En el flujo normal, un menor solo debería tener `paidAmount = 0`. Si se carga otro valor, el status sigue siendo `guest`; no debe generar transferencias.
+Un menor solo siempre tiene `paidAmount = 0`. El formulario bloquea el monto cuando se elige 1 menor, `validateFamily` rechaza otro valor con `GUEST_PAID_AMOUNT` y, al recuperar un borrador viejo que lo traiga cargado, `localEventStorage` lo pone en 0. Así ningún monto queda sin reintegrar.
 
 ## Reparto por familia
 
@@ -121,6 +121,7 @@ balance = paidAmount - expectedShare
 | `MEMBERS_OUT_OF_RANGE` | integrantes fuera de 1 a 5 o no entero |
 | `NEGATIVE_PAID_AMOUNT` | monto negativo o no finito |
 | `MISSING_SINGLE_MEMBER_TYPE` | familia de 1 integrante sin tipo |
+| `GUEST_PAID_AMOUNT` | familia de 1 menor con monto pagado mayor a 0 |
 | `NO_ELIGIBLE_FAMILIES` | ninguna familia puede aportar |
 
 Gasto total cero no es error. Si todos pagaron $0, todos quedan equilibrados salvo invitados no aportantes.

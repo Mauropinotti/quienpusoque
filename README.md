@@ -56,7 +56,7 @@ La regla especial vive en `lib/calculations/eligibility.ts`.
 | 1 menor | No | 0 |
 | 2 o más integrantes | Sí | cantidad de integrantes |
 
-Una familia de 1 menor queda marcada como **no aportante**. No paga, no cobra y no genera transferencias.
+Una familia de 1 menor queda marcada como **no aportante**. No paga, no cobra y no genera transferencias. Por eso el formulario bloquea su monto pagado en $0.
 
 ## Reparto por familia
 

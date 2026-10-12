@@ -24,7 +24,7 @@ export function Input({ label, error, hint, className = "", id, ...props }: Inpu
         aria-describedby={hasDescription ? descriptionId : undefined}
         {...props}
         className={[
-          "w-full min-h-12 rounded-lg border px-4 py-3 text-base text-stone-800 placeholder-stone-400 transition focus:outline-none focus:ring-2 focus:ring-orange-400",
+          "w-full min-h-12 rounded-lg border px-4 py-3 text-base text-stone-800 placeholder-stone-400 transition focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-500",
           error
             ? "border-red-400 bg-red-50"
             : "border-stone-300 bg-white hover:border-orange-300",

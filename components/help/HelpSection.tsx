@@ -88,7 +88,8 @@ export function HelpSection() {
             <strong>Adulto:</strong> participa del reparto y paga su parte.
           </p>
           <p>
-            <strong>Menor:</strong> queda como invitado no aportante y no paga.
+            <strong>Menor:</strong> queda como invitado no aportante, no paga y
+            su monto queda fijo en $0.
           </p>
         </HelpStepCard>
 

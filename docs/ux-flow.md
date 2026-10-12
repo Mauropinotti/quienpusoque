@@ -42,7 +42,7 @@ Formulario:
 - nombre
 - cantidad de integrantes
 - selector Adulto/Menor si tiene 1 integrante
-- monto pagado
+- monto pagado (bloqueado en $0 si es 1 menor)
 - nota o detalle
 
 Lista:

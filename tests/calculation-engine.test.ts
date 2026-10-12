@@ -1,13 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Family } from "@/types/family";
 import type { EventData, ClosedEvent } from "@/types/event";
-import { computeAllEligibility, computeEligibility } from "@/lib/calculations/eligibility";
+import {
+  computeAllEligibility,
+  computeEligibility,
+  validateFamily,
+} from "@/lib/calculations/eligibility";
 import { calculateBalances } from "@/lib/calculations/calculateBalances";
 import { calculateTransfers } from "@/lib/calculations/calculateTransfers";
 import { calculateModeImpact } from "@/lib/calculations/calculateModeImpact";
 import { recommendSplitMode } from "@/lib/calculations/recommendSplitMode";
 import { generateWhatsappText } from "@/lib/text/generateWhatsappText";
 import {
+  CURRENT_DRAFT_STORAGE_KEY,
   clearCurrentEventDraft,
   readCurrentEventDraft,
   saveCurrentEventDraft,
@@ -131,6 +136,24 @@ describe("eligibility", () => {
 
     expect(result.isEligibleToPay).toBe(true);
     expect(result.eligiblePersons).toBe(4);
+  });
+
+  it("rechaza monto pagado en una familia de 1 menor", () => {
+    const minor = family({
+      id: "menor",
+      members: 1,
+      singleMemberType: "minor",
+      paidAmount: 1000,
+    });
+
+    expect(validateFamily(minor).map((error) => error.code)).toEqual([
+      "GUEST_PAID_AMOUNT",
+    ]);
+
+    const result = calculateBalances(
+      eventData([minor, family({ id: "a" }), family({ id: "b" })], "by-family")
+    );
+    expect(result.ok).toBe(false);
   });
 });
 
@@ -346,6 +369,34 @@ describe("localEventStorage", () => {
     expect(draft?.eventName).toBe("Asado del sábado");
     expect(draft?.families).toHaveLength(5);
     expect(draft?.createdAt).toBe("2026-05-03T12:00:00.000Z");
+  });
+
+  it("pone en 0 el monto de un menor solo al recuperar un borrador viejo", () => {
+    const storage = installWindowWithStorage();
+    const families = demoFamilies.map((current) =>
+      current.id === "martinez" ? { ...current, paidAmount: 1000 } : current
+    );
+
+    storage.setItem(
+      CURRENT_DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        eventName: "Asado del sábado",
+        currency: "ARS",
+        createdAt: "2026-05-03T12:00:00.000Z",
+        families,
+        selectedMode: "by-family",
+        splitMode: "by-family",
+        recommendationAccepted: null,
+        updatedAt: "2026-05-03T12:00:00.000Z",
+      })
+    );
+
+    const draft = readCurrentEventDraft();
+    const minor = draft?.families.find((current) => current.id === "martinez");
+
+    expect(minor?.paidAmount).toBe(0);
+    expect(draft?.families).toHaveLength(5);
   });
 });
 

@@ -12,6 +12,7 @@ export type ValidationErrorCode =
   | "NEGATIVE_PAID_AMOUNT"
   | "MEMBERS_OUT_OF_RANGE"
   | "MISSING_SINGLE_MEMBER_TYPE"
+  | "GUEST_PAID_AMOUNT"
   | "NULL_SPLIT_MODE";
 
 export interface ValidationError {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Family, SingleMemberType } from "@/types/family";
+import { isSingleMinor } from "@/lib/calculations/eligibility";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -36,6 +37,7 @@ export function FamilyForm({
   const [submitted, setSubmitted] = useState(false);
 
   const parsedAmount = Number(paidAmount);
+  const isAmountLocked = isSingleMinor({ members, singleMemberType });
   const nameError =
     submitted && name.trim().length === 0 ? "Poné un nombre para identificarla." : "";
   const typeError =
@@ -44,6 +46,7 @@ export function FamilyForm({
       : "";
   const amountError =
     submitted &&
+    !isAmountLocked &&
     (paidAmount.trim() === "" || Number.isNaN(parsedAmount) || parsedAmount < 0)
       ? "Ingresá un monto válido. Puede ser 0."
       : "";
@@ -52,9 +55,10 @@ export function FamilyForm({
     members >= 1 &&
     members <= 5 &&
     (members !== 1 || singleMemberType !== null) &&
-    paidAmount.trim() !== "" &&
-    !Number.isNaN(parsedAmount) &&
-    parsedAmount >= 0;
+    (isAmountLocked ||
+      (paidAmount.trim() !== "" &&
+        !Number.isNaN(parsedAmount) &&
+        parsedAmount >= 0));
 
   const resetForm = () => {
     setName("");
@@ -72,7 +76,7 @@ export function FamilyForm({
       name: name.trim(),
       members,
       singleMemberType: members === 1 ? singleMemberType : null,
-      paidAmount: parsedAmount,
+      paidAmount: isAmountLocked ? 0 : parsedAmount,
       notes: notes.trim() || undefined,
     });
 
@@ -147,9 +151,14 @@ export function FamilyForm({
           step={0.01}
           inputMode="decimal"
           placeholder="0"
-          value={paidAmount}
+          value={isAmountLocked ? "0" : paidAmount}
           onChange={(e) => setPaidAmount(e.target.value)}
-          hint="Ingresá 0 si no puso nada."
+          disabled={isAmountLocked}
+          hint={
+            isAmountLocked
+              ? "Un menor solo no aporta, así que el monto queda en $0."
+              : "Ingresá 0 si no puso nada."
+          }
           error={amountError}
         />
 

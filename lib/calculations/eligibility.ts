@@ -1,6 +1,15 @@
 import type { Family, FamilyWithEligibility } from "@/types/family";
 import type { ValidationError } from "@/types/calculation";
 
+// ── Single minor ──────────────────────────────────────────────────────────────
+
+/** Una familia de 1 menor no aporta: no paga y no carga monto pagado. */
+export function isSingleMinor(
+  family: Pick<Family, "members" | "singleMemberType">
+): boolean {
+  return family.members === 1 && family.singleMemberType === "minor";
+}
+
 // ── Validation ────────────────────────────────────────────────────────────────
 
 export function validateFamily(family: Family): ValidationError[] {
@@ -30,6 +39,14 @@ export function validateFamily(family: Family): ValidationError[] {
     errors.push({
       code: "MISSING_SINGLE_MEMBER_TYPE",
       message: `"${family.name}": una familia de 1 integrante debe indicar si es adulto o menor.`,
+      familyId: family.id,
+    });
+  }
+
+  if (isSingleMinor(family) && family.paidAmount > 0) {
+    errors.push({
+      code: "GUEST_PAID_AMOUNT",
+      message: `"${family.name}": una familia de 1 menor no aporta, así que su monto pagado debe ser 0.`,
       familyId: family.id,
     });
   }
