@@ -44,7 +44,8 @@ export function BrandMark({ href = "/", size = "md", showName = true }: BrandMar
       {showName && (
         <span
           className={[
-            "font-display leading-none whitespace-nowrap",
+            // En pantallas muy angostas (<360 px) queda solo el isotipo.
+            "font-display leading-none whitespace-nowrap max-[359px]:hidden",
             size === "sm" ? "text-lg" : "text-xl",
           ].join(" ")}
         >

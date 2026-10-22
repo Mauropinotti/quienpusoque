@@ -25,7 +25,8 @@ export function AppHeader({ action = "help" }: AppHeaderProps) {
             </>
           ) : (
             <>
-              <span>Ir a calcular</span>
+              <span className="sm:hidden">Calcular</span>
+              <span className="hidden sm:inline">Ir a calcular</span>
               <ArrowRightIcon className="text-base" />
             </>
           )}
