@@ -11,7 +11,8 @@
 - TypeScript
 - Tailwind CSS v4
 - nanoid
-- jsPDF
+- jsPDF (carga diferida)
+- Vitest + Playwright
 - Sin backend
 - Sin base de datos
 - Sin autenticación
@@ -21,11 +22,15 @@
 Separación estricta entre lógica y UI:
 
 - `lib/calculations/`: funciones puras.
+- `lib/flow/`: reducer del flujo y derivados.
+- `lib/forms/`: validación de formularios.
+- `lib/image/`: preparación de la foto del ticket.
 - `lib/pdf/`: generación del ticket PDF.
 - `components/`: renderizado e interacción.
 - `components/help/`: ayuda visible para usuarios finales.
 - `types/`: contratos.
-- `app/page.tsx`: orquestación del flujo.
+- `app/page.tsx`: landing estática.
+- `components/calculator/CalculatorApp.tsx`: orquestación del flujo (montado en `/calcular`).
 
 ## Reglas de negocio
 
@@ -86,6 +91,7 @@ Reglas:
 - Fórmulas: `docs/calculation-model.md`.
 - Recomendación: `docs/recommendation-criteria.md`.
 - UX: `docs/ux-flow.md`.
+- Rendimiento: `docs/performance.md`.
 - PDF: `docs/pdf-ticket.md`.
 - Ayuda: `docs/ux-flow.md` y `components/help/`.
 - Casos: `docs/examples.md`.

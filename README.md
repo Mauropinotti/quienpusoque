@@ -1,101 +1,78 @@
 # ¿Quién puso qué?
 
-Calculadora mobile first para repartir gastos compartidos en reuniones, asados, viajes y eventos chicos.
+**Repartí los gastos del asado sin planillas ni discusiones.** Cargás quién vino y cuánto puso; la app reparte por familia o por persona, te sugiere el criterio más justo y arma las transferencias mínimas para mandar al grupo, con resumen para WhatsApp y ticket PDF.
 
-Cuentas claras siempre!
+Sin registro, sin backend, sin base de datos: todo corre en el navegador.
 
-Deploy público: `https://quien-puso-que.vercel.app` (placeholder hasta publicar el primer deploy).
+![Landing de ¿Quién puso qué?](docs/screenshots/landing.jpg)
 
-## Descripción breve
+> Deploy: `https://quien-puso-que.vercel.app` (pendiente del primer deploy). Para verlo localmente: `npm install && npm run dev`.
 
-**¿Quién puso qué?** ayuda a responder, sin planillas ni discusiones eternas, quién pagó de más, quién tiene que poner plata y qué transferencias conviene hacer para cerrar un evento grupal.
+## El problema
 
-Funciona sin backend: todo se calcula en el navegador y el borrador queda guardado localmente.
-
-## El problema que resuelve
-
-Termina la juntada. Una familia compró carne, otra llevó bebidas, alguien pagó hielo, otra familia no puso nada todavía y hay un menor invitado que no debería entrar en la cuenta. La pregunta aparece sola:
+Termina la juntada. Una familia compró carne, otra llevó bebidas, alguien pagó el hielo, otra no puso nada todavía y hay un menor invitado que no debería entrar en la cuenta. La pregunta aparece sola:
 
 > ¿Quién le debe cuánto a quién?
 
-Esta app convierte esos datos en:
+## Cómo se usa
 
-- un criterio de reparto claro
-- balances por familia
-- transferencias sugeridas
-- un texto listo para pegar en WhatsApp
+![Flujo en el celular: evento, familias, criterio y ticket](docs/screenshots/flujo-movil.jpg)
 
-## Casos de uso
+1. **Evento**: le ponés nombre a la juntada.
+2. **Familias**: quién vino, cuántos son y cuánto puso. Un menor que viene solo no aporta.
+3. **Criterio**: la app recomienda repartir por familia o por persona, explica por qué y muestra cuánto le tocaría a cada uno con cada criterio. Decidís vos.
+4. **Ticket**: balances, transferencias numeradas, copiar para WhatsApp, PDF y guardar en el historial.
 
-- Asados, cumpleaños y reuniones familiares.
-- Escapadas de fin de semana.
-- Compras comunitarias para eventos.
-- Grupos donde algunas familias tienen muchos integrantes y otras vienen de a una persona.
-- Eventos con menores invitados que no aportan.
+La ayuda para usuarios está en `/ayuda`.
 
-## Cómo funciona
+## Lo que hay detrás
 
-1. Creás el evento.
-2. Cargás familias: nombre, integrantes, monto pagado y nota opcional.
-3. Si una familia tiene 1 integrante, indicás si es adulto o menor.
-4. La app recomienda repartir por familia o por persona.
-5. Podés aceptar la recomendación o elegir manualmente.
-6. Se calculan balances y transferencias.
-7. Copiás el resumen para WhatsApp.
-8. Descargás el ticket PDF final.
+| | |
+|---|---|
+| **Motor de cálculo puro** | Elegibilidad, recomendación, balances y transferencias son funciones puras en `lib/calculations/`, sin React. Las transferencias usan aritmética entera para no arrastrar errores de punto flotante. |
+| **Flujo como máquina de estados** | `lib/flow/eventFlow.ts` es un reducer puro y testeado: no lee storage, no genera ids ni fechas. La UI solo despacha acciones. |
+| **Rendimiento medido** | 16 teclas en un input pasaban de 48 operaciones de `localStorage` a 1; agregar una familia, de 33 renders a 10. Landing sin JS propio, pasos con carga diferida y jsPDF por intención. Detalle y metodología en [`docs/performance.md`](docs/performance.md). |
+| **Lighthouse móvil** | Performance 98–99 y **100** en accesibilidad, buenas prácticas y SEO en las tres rutas. CLS 0. |
+| **Sin flash al volver** | Si hay una cuenta a medio hacer, un script inline decide antes del primer paint qué mostrar; nunca se ve el paso 1 para después saltar. |
+| **Probado de punta a punta** | 50 tests unitarios (Vitest) y 24 E2E (Playwright, móvil y desktop) sobre el build de producción: portapapeles, descarga y validación del PDF, recarga inmediata, teclado, recorte de foto. Un error de consola hace fallar el test. |
+| **Privacidad por diseño** | El cálculo, el borrador, el historial y la foto del ticket nunca salen del navegador. |
 
-La app también incluye una ayuda visible en `/ayuda`, pensada para usuarios no técnicos. Explica cómo cargar familias, cuándo una familia aporta, cómo se elige el criterio y cómo leer balances y transferencias.
+## Reglas de negocio
 
-## Familias de un solo integrante
+### Quién aporta
 
-La regla especial vive en `lib/calculations/eligibility.ts`.
+La regla vive en `lib/calculations/eligibility.ts`.
 
-| Caso | Entra en el reparto | Personas elegibles |
+| Caso | Entra en el reparto | Personas habilitadas |
 |---|---:|---:|
 | 1 adulto | Sí | 1 |
 | 1 menor | No | 0 |
 | 2 o más integrantes | Sí | cantidad de integrantes |
 
-Una familia de 1 menor queda marcada como **no aportante**. No paga, no cobra y no genera transferencias. Por eso el formulario bloquea su monto pagado en $0.
+Una familia de 1 menor queda como **no aportante**: no paga, no cobra y no genera transferencias. Por eso el formulario bloquea su monto en $0.
 
-## Reparto por familia
-
-Cada familia habilitada paga una parte igual del gasto total.
+### Por familia o por persona
 
 ```text
-cuota_por_familia = gasto_total / familias_habilitadas
+por familia:  cuota = gasto_total / familias_habilitadas
+por persona:  cuota_familia = (gasto_total / personas_habilitadas) * integrantes_habilitados
 ```
 
-Es simple y suele funcionar bien cuando los grupos tienen tamaños parecidos o cuando el evento se quiere cerrar rápido.
+Por familia es simple y sirve con grupos de tamaño parecido. Por persona es más fino cuando hay familias chicas y grandes.
 
-## Reparto por persona
+### Recomendación
 
-Cada integrante habilitado cuenta como una parte.
-
-```text
-cuota_por_persona = gasto_total / personas_habilitadas
-cuota_familia = cuota_por_persona * integrantes_habilitados_de_la_familia
-```
-
-Es más fino cuando hay familias de tamaños muy distintos.
-
-## Motor de recomendación
-
-El motor está en `lib/calculations/recommendSplitMode.ts`.
-
-No decide por capricho: calcula métricas del grupo y genera señales con peso.
+`lib/calculations/recommendSplitMode.ts` calcula métricas del grupo y genera señales con peso:
 
 - Muchas familias de 1 adulto favorecen `by-person`.
 - Muchas familias grandes favorecen `by-family`.
 - Si el impacto económico entre criterios es alto, favorece `by-person`.
 - Si el impacto es bajo y los tamaños son parecidos, favorece `by-family`.
-- Si no hay una señal fuerte, sugiere `by-family` por simpleza y con una señal baja.
+- Sin señales fuertes, sugiere `by-family` por simpleza, con confianza baja.
 
-La recomendación es una ayuda. El usuario siempre puede elegir otro criterio.
+La recomendación es una ayuda: siempre se puede elegir otro criterio. Más en [`docs/recommendation-criteria.md`](docs/recommendation-criteria.md).
 
-## Cálculo de balances
-
-El cálculo principal está en `lib/calculations/calculateBalances.ts`.
+### Balances y transferencias
 
 ```text
 balance = monto_pagado - cuota_esperada
@@ -108,89 +85,7 @@ balance = monto_pagado - cuota_esperada
 | igual a 0 | equilibrado | está justo |
 | familia no elegible | no aporta | no entra en el reparto |
 
-Los estados son parte del contrato `FamilyBalance`. Los componentes los muestran, no los reinterpretan.
-
-## Cálculo de transferencias
-
-El cálculo está en `lib/calculations/calculateTransfers.ts`.
-
-La app separa:
-
-- deudores: familias con estado `pays`
-- acreedores: familias con estado `receives`
-
-Luego aplica un emparejamiento greedy ordenado de mayor a menor deuda o crédito. El objetivo es generar pocas transferencias, con montos enteros en pesos.
-
-## Persistencia local del borrador
-
-El evento actual se guarda automáticamente en `localStorage` con la clave:
-
-```text
-quien-puso-que:current-draft
-```
-
-Se guarda:
-
-- nombre del evento
-- moneda
-- familias cargadas
-- modo seleccionado
-- modo confirmado, si existe
-- si se aceptó o no la recomendación
-- fecha de creación
-- fecha de última edición
-
-La recuperación ocurre solo del lado cliente y valida datos antes de usarlos. Si `localStorage` no está disponible, la app sigue funcionando sin persistencia.
-
-## Historial local de eventos cerrados
-
-El historial local guarda eventos ya calculados en `localStorage`, separados del borrador actual.
-
-Clave:
-
-```text
-quien-puso-que:closed-events
-```
-
-Un **evento borrador** es el evento en edición. Un **evento cerrado** es una foto final del cálculo confirmado por el usuario.
-
-Cada evento cerrado guarda:
-
-- id
-- nombre
-- fecha de creación
-- fecha de cierre
-- total
-- criterio usado
-- snapshot de familias
-- snapshot de balances
-- snapshot de transferencias
-- snapshot de recomendación
-- nota opcional
-
-El historial se consulta desde el inicio de la app y permite borrar eventos cerrados individualmente. No guarda imágenes ni archivos pesados.
-
-## Ticket PDF final
-
-El ticket PDF es la salida formal del sistema. Se genera desde resultados con el botón `Descargar ticket PDF`.
-
-Incluye:
-
-- nombre de la app y del evento
-- fecha de generación
-- foto opcional del evento
-- gasto total
-- familias cargadas y habilitadas
-- personas habilitadas
-- criterio usado
-- criterio recomendado
-- explicación breve del criterio
-- tabla de familias, cuotas, balances y estados
-- familias no aportantes
-- transferencias sugeridas
-- nota de cierre
-
-La foto opcional se procesa localmente en el navegador. No se sube a servidores, no se guarda en historial y no se persiste en `localStorage`.
+El estado lo calcula `calculateBalances`; la UI no lo reinterpreta. Las transferencias (`calculateTransfers`) emparejan deudores y acreedores de mayor a menor con un greedy determinístico, en pesos enteros, para minimizar la cantidad de movimientos. Modelo completo en [`docs/calculation-model.md`](docs/calculation-model.md).
 
 ## Ejemplo completo
 
@@ -204,91 +99,114 @@ Evento: **Asado del sábado**
 | Los Martínez | 1 | menor | $0 |
 | Los Fernández | 3 | - | $5.000 |
 
-Total: **$16.000**. Familias habilitadas: 4. Personas habilitadas: 10. Los Martínez no aportan porque es un menor sin cargo.
+Total: **$16.000**. Familias habilitadas: 4. Personas habilitadas: 10. Los Martínez no aportan.
 
-Con reparto por familia:
+Por familia, cada una pone `16.000 / 4 = 4.000`:
+
+- Los López le transfieren $4.000 a Los García.
+- Los Rodríguez le transfieren $1.000 a Los Fernández.
+
+Este mismo cálculo es el ticket de muestra de la landing: se genera en build con el motor real. Más casos en [`docs/examples.md`](docs/examples.md).
+
+## Ticket PDF
+
+<img src="docs/screenshots/ticket-pdf.jpg" alt="Ticket PDF generado por la app" width="420">
+
+Se genera en el navegador con `jsPDF` (sin screenshots ni servidor) e incluye resumen, criterio, tabla de familias, no aportantes y transferencias. La foto opcional se recorta al formato del ticket sin deformarse y no se guarda en ningún lado. Detalle en [`docs/pdf-ticket.md`](docs/pdf-ticket.md).
+
+## Persistencia local
+
+| Clave | Contenido |
+|---|---|
+| `quien-puso-que:current-draft` | la cuenta en edición; se guarda sola (debounce + al cerrar la pestaña) |
+| `quien-puso-que:closed-events` | historial de cuentas cerradas (máximo 50) |
+
+Todo lo que se lee del storage se valida antes de usarlo. Si el navegador bloquea `localStorage`, la app sigue funcionando sin persistencia.
+
+## Stack
+
+- Next.js 16 (App Router, Turbopack) · React 19 · TypeScript
+- Tailwind CSS v4 con tokens propios
+- jsPDF (carga diferida) · nanoid
+- Vitest · Playwright · Lighthouse
+- Tipografía: Bricolage Grotesque (OFL), subset propio autoalojado
+
+## Estructura
 
 ```text
-cuota = 16.000 / 4 = 4.000
+app/                  rutas: landing, /calcular, /ayuda, metadatos, íconos
+components/
+  landing/            secciones de la landing (Server Components)
+  calculator/         CalculatorApp: estado y flujo; fallback; stepper
+  event/ families/    pasos 1 y 2
+  recommendation/     paso 3
+  results/            ticket, WhatsApp, PDF
+  history/ help/      historial y ayuda
+  ui/ layout/         primitivas, íconos, header, footer
+hooks/                persistencia del borrador
+lib/
+  calculations/       motor de cálculo (puro)
+  flow/               reducer del flujo y derivados
+  forms/ image/ pdf/  validación, foto, PDF
+  storage/            acceso defensivo a localStorage
+  text/ formatting/   WhatsApp, moneda, fechas
+types/                contratos
+tests/  e2e/          unitarios y E2E
+scripts/perf/         medición de red y renders
+docs/                 producto, cálculo, UX, PDF y rendimiento
 ```
 
-Balances:
-
-- Los García cobra $4.000.
-- Los Rodríguez paga $1.000.
-- Los López paga $4.000.
-- Los Martínez no aporta.
-- Los Fernández cobra $1.000.
-
-Transferencias sugeridas:
-
-- Los López le transfiere $4.000 a Los García.
-- Los Rodríguez le transfiere $1.000 a Los Fernández.
-
-## Stack técnico
-
-- Next.js App Router (`next` 16.2.4 en `package.json`)
-- React 19
-- TypeScript
-- Tailwind CSS v4
-- nanoid
-- jsPDF para generar el ticket PDF en el navegador
-- Sin backend
-- Sin base de datos
-- Sin autenticación
+Regla principal: **la lógica de negocio no va en componentes React**. Ver [`CLAUDE.md`](CLAUDE.md) / [`AGENTS.md`](AGENTS.md).
 
 ## Correr localmente
 
 ```bash
 npm install
-npm run dev
+npm run dev          # http://localhost:3000
 ```
 
-Abrir `http://localhost:3000`.
-
-Para verificar producción:
+Verificación:
 
 ```bash
+npm test             # unitarios
 npm run lint
-npm test
 npm run build
+npx playwright install chromium   # una sola vez
+npm run test:e2e     # E2E sobre el build de producción
 ```
+
+Si el entorno ya tiene un Chromium, `PLAYWRIGHT_CHROMIUM_PATH=/ruta/a/chrome npm run test:e2e`.
 
 ## Desplegar en Vercel
 
 1. Subir el repo a GitHub.
-2. Importarlo desde Vercel.
-3. Usar la configuración automática para Next.js.
-4. Deploy.
+2. Importarlo desde Vercel con la configuración automática para Next.js.
+3. Deploy. No requiere variables de entorno; Vercel Analytics se activa solo dentro de Vercel.
 
-No requiere variables de entorno para el MVP.
+## Estado
 
-## Estado del proyecto
-
-- [x] Flujo mobile first: setup, familias, recomendación y resultados.
+- [x] Landing y calculadora mobile first.
 - [x] Alta, edición y eliminación de familias.
-- [x] Reglas de elegibilidad.
-- [x] Reparto por familia y por persona.
-- [x] Motor de recomendación.
-- [x] Balances y transferencias.
+- [x] Reglas de elegibilidad, reparto por familia y por persona.
+- [x] Motor de recomendación con comparación por familia.
+- [x] Balances y transferencias mínimas.
 - [x] Resumen para WhatsApp con fallback de copiado.
-- [x] Borrador local en `localStorage`.
-- [x] Historial local de eventos cerrados.
-- [x] Tests automatizados.
-- [x] Ticket PDF final con foto opcional local.
-- [x] Ayuda visible para usuarios finales.
+- [x] Borrador e historial locales.
+- [x] Ticket PDF con foto opcional.
+- [x] Ayuda para usuarios finales.
+- [x] Tests unitarios y E2E.
+- [x] Accesibilidad AA (Lighthouse 100).
 
 ## Roadmap
 
 - Exportar o compartir eventos cerrados.
-- Tests unitarios para cálculos y storage.
-- Mejoras de accesibilidad y QA visual responsive.
+- Modo offline con service worker.
 - Soporte opcional para más monedas.
-- Mejoras visuales del ticket PDF y opciones de impresión.
+- Monitoreo de errores en producción (Sentry con carga diferida).
 
 ## Licencia
 
-Este proyecto se publica bajo licencia MIT. Se puede usar, copiar, modificar y distribuir libremente manteniendo el aviso de copyright y la licencia.
+Código bajo licencia MIT. La tipografía Bricolage Grotesque se distribuye bajo SIL Open Font License 1.1 (`app/fonts/OFL.txt`).
 
 ## Filosofía
 
@@ -296,4 +214,7 @@ Este proyecto se publica bajo licencia MIT. Se puede usar, copiar, modificar y d
 - UI amable, pero resultados precisos.
 - Sin backend mientras el problema pueda resolverse bien en el navegador.
 - Separación estricta entre lógica de negocio y componentes.
+- Medir antes de optimizar.
 - Texto en español argentino, directo y sin solemnidad innecesaria.
+
+¡Cuentas claras siempre!

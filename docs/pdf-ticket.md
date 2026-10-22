@@ -30,12 +30,25 @@ Se incorpora `jsPDF` porque permite construir PDFs reales desde el navegador sin
 lib/pdf/generateEventTicketPdf.ts
 ```
 
-Componentes relacionados:
+Componentes y módulos relacionados:
 
 ```text
-components/results/ExportPdfButton.tsx
-components/event/EventPhotoUploader.tsx
+components/results/ExportPdfButton.tsx   botón + carga diferida de jsPDF
+components/event/EventPhotoUploader.tsx  selector de foto con vista previa
+lib/image/prepareTicketPhoto.ts          recorte y compresión de la foto
+lib/pdf/ticketPhoto.ts                   medidas del espacio de la foto
 ```
+
+`ticketPhoto.ts` vive separado del generador para que la UI pueda usar las
+medidas sin arrastrar jsPDF al bundle principal.
+
+## Carga de jsPDF
+
+jsPDF (~134 KB comprimido) está en su propio chunk. `ExportPdfButton` lo pide
+cuando el usuario muestra intención (`pointerenter`, `focus` o `touchstart`
+sobre el botón), así el click no espera la descarga. Los datos del ticket se
+arman al hacer click (`getData`), de modo que la fecha de generación es la del
+momento de la descarga.
 
 Tipos:
 
@@ -45,11 +58,14 @@ types/pdf.ts
 
 ## Estructura del PDF
 
-1. Nombre de la app: `¿Quién puso qué?`
+El diseño usa la misma paleta que la app (papel, brasa y carbón) y, con foto
+y hasta 5 o 6 familias, entra en una sola hoja A4.
+
+1. Encabezado en tinta con el nombre de la app y acento de brasa.
 2. Nombre del evento.
 3. Fecha de generación.
-4. Foto opcional del evento.
-5. Resumen general:
+4. Foto opcional del evento (190 × 64 mm).
+5. Resumen general en grilla de 3 columnas:
    - gasto total
    - familias cargadas
    - familias habilitadas
@@ -67,9 +83,13 @@ types/pdf.ts
    - estado
 8. Familias no aportantes.
 9. Transferencias sugeridas.
-10. Nota de cierre.
-11. Firma visual: `Cuentas claras siempre!`
-12. Pie de página: `desarrollado por MauroHP - Lista 127 8B 2026.-`
+10. Nota de cierre, como pie discreto sin título, que termina con
+    `¡Cuentas claras siempre!`
+11. Pie de página: `desarrollado por MauroHP - Lista 127 8B 2026.-`
+
+Los títulos de sección reservan lugar para su primer bloque: nunca quedan
+huérfanos al pie de una hoja. La tabla de familias usa un `Map` por id para
+cruzar balances con familias (antes era un `find()` por fila).
 
 ## Foto opcional
 
@@ -82,12 +102,18 @@ Privacidad:
 - no queda en el historial
 - se usa solo para armar el PDF actual
 
-Procesamiento:
+Procesamiento (`lib/image/prepareTicketPhoto.ts`):
 
-- se lee con `FileReader`
-- se carga en un `canvas`
-- se reduce a un tamaño razonable
-- se exporta como JPEG comprimido para insertar en el PDF
+- se decodifica con `createImageBitmap`, fuera del hilo principal y respetando
+  la orientación EXIF (con fallback a `<img>` + `URL.createObjectURL`)
+- se recorta centrada tipo *cover* al aspecto exacto del espacio del PDF
+  (190:64), así nunca se deforma
+- se reduce a un máximo de 1200 px de ancho (~160 dpi impreso), sin agrandar
+  imágenes chicas
+- se exporta como JPEG al 82% para insertar en el PDF
+
+La vista previa en pantalla usa la misma proporción: lo que se ve es lo que se
+imprime.
 
 Si falla la imagen, el PDF puede generarse igual sin foto.
 
