@@ -1,5 +1,6 @@
 import type { FamilyBalance, Transfer } from "@/types/calculation";
 import type { SplitMode } from "@/types/family";
+import { formatMoney } from "@/lib/formatting/formatCurrency";
 
 interface GenerateOptions {
   eventName: string;
@@ -7,17 +8,6 @@ interface GenerateOptions {
   splitMode: SplitMode;
   balances: FamilyBalance[];
   transfers: Transfer[];
-}
-
-function formatWhatsappCurrency(amount: number, currency: string): string {
-  const hasCents = Math.abs(amount % 1) > 0.001;
-
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: hasCents ? 2 : 0,
-    maximumFractionDigits: hasCents ? 2 : 0,
-  }).format(amount);
 }
 
 function getPerPersonShare(totalPaid: number, balances: FamilyBalance[]): number {
@@ -72,9 +62,9 @@ export function generateWhatsappText({
   const lines: string[] = [
     title,
     "",
-    `Gasto total: ${formatWhatsappCurrency(totalPaid, currency)}`,
+    `Gasto total: ${formatMoney(totalPaid, currency)}`,
     `Criterio usado: ${modeLabel}`,
-    `${shareLabel}: ${formatWhatsappCurrency(shareAmount, currency)}`,
+    `${shareLabel}: ${formatMoney(shareAmount, currency)}`,
     "",
   ];
 
@@ -82,7 +72,7 @@ export function generateWhatsappText({
     lines.push("Transferencias sugeridas:");
     for (const transfer of transfers) {
       lines.push(
-        `- ${transfer.fromFamilyName} le transfiere ${formatWhatsappCurrency(
+        `- ${transfer.fromFamilyName} le transfiere ${formatMoney(
           transfer.amount,
           currency
         )} a ${transfer.toFamilyName}`
@@ -97,7 +87,7 @@ export function generateWhatsappText({
     lines.push("", "Cobran:");
     for (const balance of receivers) {
       lines.push(
-        `- ${balance.name}: ${formatWhatsappCurrency(
+        `- ${balance.name}: ${formatMoney(
           Math.abs(balance.balance),
           currency
         )}`
@@ -109,7 +99,7 @@ export function generateWhatsappText({
     lines.push("", "Pagan:");
     for (const balance of payers) {
       lines.push(
-        `- ${balance.name}: ${formatWhatsappCurrency(
+        `- ${balance.name}: ${formatMoney(
           Math.abs(balance.balance),
           currency
         )}`

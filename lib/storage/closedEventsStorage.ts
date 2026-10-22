@@ -1,11 +1,21 @@
 import type { FamilyBalance, Transfer } from "@/types/calculation";
 import type { ClosedEvent } from "@/types/event";
-import type { Family, SingleMemberType, SplitMode } from "@/types/family";
 import type {
   RecommendationConfidence,
   RecommendationMetrics,
   SplitRecommendation,
 } from "@/types/recommendation";
+import {
+  getBrowserStorage,
+  readStorageJson,
+  writeStorageString,
+} from "./browserStorage";
+import {
+  isRecord,
+  isSplitMode,
+  isValidDate,
+  isValidFamily,
+} from "./validators";
 
 export const CLOSED_EVENTS_STORAGE_KEY = "quien-puso-que:closed-events";
 
@@ -17,56 +27,13 @@ interface ClosedEventsPayload {
   events: ClosedEvent[];
 }
 
-function canUseLocalStorage(): boolean {
-  if (typeof window === "undefined") return false;
-
-  try {
-    const testKey = `${CLOSED_EVENTS_STORAGE_KEY}:test`;
-    window.localStorage.setItem(testKey, "1");
-    window.localStorage.removeItem(testKey);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isSplitMode(value: unknown): value is SplitMode {
-  return value === "by-family" || value === "by-person";
-}
-
-function isSingleMemberType(value: unknown): value is SingleMemberType {
-  return value === "adult" || value === "minor" || value === null;
+export interface SaveClosedEventResult {
+  saved: boolean;
+  events: ClosedEvent[];
 }
 
 function isConfidence(value: unknown): value is RecommendationConfidence {
   return value === "low" || value === "medium" || value === "high";
-}
-
-function isValidDate(value: unknown): value is string {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value));
-}
-
-function isValidFamily(value: unknown): value is Family {
-  if (!isRecord(value)) return false;
-
-  const { id, name, members, singleMemberType, paidAmount, notes } = value;
-
-  if (typeof id !== "string" || id.trim() === "") return false;
-  if (typeof name !== "string" || name.trim() === "") return false;
-  if (typeof members !== "number") return false;
-  if (!Number.isInteger(members) || members < 1 || members > 5) return false;
-  if (!isSingleMemberType(singleMemberType)) return false;
-  if (members === 1 && singleMemberType === null) return false;
-  if (members > 1 && singleMemberType !== null) return false;
-  if (typeof paidAmount !== "number" || !Number.isFinite(paidAmount)) return false;
-  if (paidAmount < 0) return false;
-  if (notes !== undefined && typeof notes !== "string") return false;
-
-  return true;
 }
 
 function isValidBalance(value: unknown): value is FamilyBalance {
@@ -210,61 +177,114 @@ function parsePayload(value: unknown): ClosedEvent[] {
   return events.filter(isValidClosedEvent);
 }
 
-function writeClosedEvents(events: ClosedEvent[]): boolean {
-  if (!canUseLocalStorage()) return false;
+function sortByClosedAt(events: ClosedEvent[]): ClosedEvent[] {
+  return [...events].sort((a, b) => b.closedAt.localeCompare(a.closedAt));
+}
 
+function writeClosedEvents(events: ClosedEvent[]): boolean {
   const payload: ClosedEventsPayload = {
     version: STORAGE_VERSION,
     events: events.slice(0, MAX_CLOSED_EVENTS),
   };
 
-  try {
-    window.localStorage.setItem(
-      CLOSED_EVENTS_STORAGE_KEY,
-      JSON.stringify(payload)
-    );
-    return true;
-  } catch {
-    return false;
-  }
+  return writeStorageString(CLOSED_EVENTS_STORAGE_KEY, JSON.stringify(payload));
 }
 
+// ── Store en memoria ──────────────────────────────────────────────────────────
+//
+// El historial se lee y valida una sola vez; después vive en memoria y los
+// componentes se suscriben con useSyncExternalStore. Antes, cada guardado
+// releía y revalidaba todo el historial dos veces (al guardar y al refrescar
+// la lista).
+
+const EMPTY_EVENTS: ClosedEvent[] = [];
+let cachedEvents: ClosedEvent[] | null = null;
+let cachedFor: Storage | null = null;
+const listeners = new Set<() => void>();
+
+function setCachedEvents(events: ClosedEvent[]) {
+  cachedEvents = events;
+  cachedFor = getBrowserStorage();
+  listeners.forEach((listener) => listener());
+}
+
+function handleStorageEvent(event: StorageEvent) {
+  // Otra pestaña modificó el historial: invalidar y releer.
+  if (event.key !== null && event.key !== CLOSED_EVENTS_STORAGE_KEY) return;
+  setCachedEvents(readClosedEvents());
+}
+
+export function subscribeToClosedEvents(listener: () => void): () => void {
+  listeners.add(listener);
+  if (listeners.size === 1 && typeof window !== "undefined") {
+    window.addEventListener("storage", handleStorageEvent);
+  }
+
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0 && typeof window !== "undefined") {
+      window.removeEventListener("storage", handleStorageEvent);
+    }
+  };
+}
+
+export function getClosedEventsSnapshot(): ClosedEvent[] {
+  const storage = getBrowserStorage();
+  if (cachedEvents === null || cachedFor !== storage) {
+    cachedEvents = storage ? readClosedEvents() : EMPTY_EVENTS;
+    cachedFor = storage;
+  }
+  return cachedEvents;
+}
+
+export function getServerClosedEventsSnapshot(): ClosedEvent[] {
+  return EMPTY_EVENTS;
+}
+
+/** Solo para tests: fuerza a releer el storage en el próximo snapshot. */
+export function resetClosedEventsCache() {
+  cachedEvents = null;
+  cachedFor = null;
+}
+
+// ── API pública ───────────────────────────────────────────────────────────────
+
+/** Lectura directa del storage, siempre validada. */
 export function readClosedEvents(): ClosedEvent[] {
-  if (!canUseLocalStorage()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(CLOSED_EVENTS_STORAGE_KEY);
-    if (!raw) return [];
-    return parsePayload(JSON.parse(raw)).sort((a, b) =>
-      b.closedAt.localeCompare(a.closedAt)
-    );
-  } catch {
-    return [];
-  }
+  return sortByClosedAt(
+    parsePayload(readStorageJson(CLOSED_EVENTS_STORAGE_KEY))
+  );
 }
 
-export function saveClosedEvent(event: ClosedEvent): ClosedEvent[] {
-  if (!isValidClosedEvent(event)) return readClosedEvents();
+export function saveClosedEvent(event: ClosedEvent): SaveClosedEventResult {
+  const currentEvents = getClosedEventsSnapshot();
+  if (!isValidClosedEvent(event)) {
+    return { saved: false, events: currentEvents };
+  }
 
-  const currentEvents = readClosedEvents();
   const nextEvents = [
     event,
     ...currentEvents.filter((currentEvent) => currentEvent.id !== event.id),
   ].slice(0, MAX_CLOSED_EVENTS);
 
-  writeClosedEvents(nextEvents);
-  return nextEvents;
+  if (!writeClosedEvents(nextEvents)) {
+    return { saved: false, events: currentEvents };
+  }
+
+  setCachedEvents(nextEvents);
+  return { saved: true, events: nextEvents };
 }
 
 export function deleteClosedEvent(eventId: string): ClosedEvent[] {
-  if (eventId.trim() === "") return readClosedEvents();
+  const currentEvents = getClosedEventsSnapshot();
+  if (eventId.trim() === "") return currentEvents;
 
-  const nextEvents = readClosedEvents().filter((event) => event.id !== eventId);
-  writeClosedEvents(nextEvents);
-  return nextEvents;
+  const nextEvents = currentEvents.filter((event) => event.id !== eventId);
+  if (writeClosedEvents(nextEvents)) setCachedEvents(nextEvents);
+  return getClosedEventsSnapshot();
 }
 
 export function clearClosedEvents(): ClosedEvent[] {
-  writeClosedEvents([]);
-  return [];
+  if (writeClosedEvents([])) setCachedEvents(EMPTY_EVENTS);
+  return getClosedEventsSnapshot();
 }

@@ -1,36 +1,60 @@
-"use client";
-import { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "sm" | "md" | "lg";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "ink";
+export type ButtonSize = "sm" | "md" | "lg" | "xl";
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
-  size?: Size;
+interface ButtonStyleOptions {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   fullWidth?: boolean;
+  className?: string;
 }
 
-const variantClasses: Record<Variant, string> = {
-  primary:
-    "bg-orange-600 hover:bg-orange-700 text-white shadow-sm active:scale-[0.98]",
-  secondary:
-    "bg-white hover:bg-orange-50 text-orange-700 border border-orange-200 active:scale-[0.98]",
-  ghost: "bg-transparent hover:bg-orange-50 text-orange-700 active:scale-[0.98]",
-  danger: "bg-red-600 hover:bg-red-700 text-white active:scale-[0.98]",
+const base =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl font-bold tracking-tight select-none disabled:cursor-not-allowed disabled:opacity-45";
+
+const variantClasses: Record<ButtonVariant, string> = {
+  primary: "press border-2 border-ink bg-ember text-ink shadow-hard",
+  ink: "press border-2 border-ink bg-ink text-paper shadow-[4px_4px_0_0_var(--color-ember)] hover:shadow-[6px_6px_0_0_var(--color-ember)]",
+  secondary: "press border-2 border-ink bg-white text-ink shadow-hard-sm",
+  ghost:
+    "border-2 border-transparent text-ink underline decoration-2 underline-offset-4 decoration-ink/25 transition-colors hover:decoration-ember hover:bg-ink/5",
+  danger: "press border-2 border-ink bg-morron text-white shadow-hard-sm",
 };
 
-const sizeClasses: Record<Size, string> = {
-  sm: "px-3 py-2 text-sm",
-  md: "px-4 py-3 text-base",
-  lg: "px-5 py-4 text-base font-semibold",
+const sizeClasses: Record<ButtonSize, string> = {
+  sm: "px-3 py-1.5 text-sm",
+  md: "px-4 py-2.5 text-base",
+  lg: "px-5 py-3.5 text-lg",
+  xl: "min-h-16 px-7 py-4 text-xl",
 };
 
-export function Button({
+export function buttonClasses({
   variant = "primary",
   size = "md",
   fullWidth = false,
   className = "",
-  children,
+}: ButtonStyleOptions = {}): string {
+  return [
+    base,
+    variantClasses[variant],
+    sizeClasses[size],
+    fullWidth ? "w-full" : "",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+interface ButtonProps
+  extends ButtonHTMLAttributes<HTMLButtonElement>,
+    Omit<ButtonStyleOptions, "className"> {}
+
+export function Button({
+  variant,
+  size,
+  fullWidth,
+  className,
   type = "button",
   ...props
 }: ButtonProps) {
@@ -38,17 +62,7 @@ export function Button({
     <button
       type={type}
       {...props}
-      className={[
-        "min-h-11 rounded-lg font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
-        variantClasses[variant],
-        sizeClasses[size],
-        fullWidth ? "w-full" : "",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {children}
-    </button>
+      className={buttonClasses({ variant, size, fullWidth, className })}
+    />
   );
 }

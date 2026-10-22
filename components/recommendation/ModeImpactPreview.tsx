@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { RecommendationMetrics } from "@/types/recommendation";
 import { formatPercentage } from "@/lib/formatting/formatPercentage";
 
@@ -5,28 +6,27 @@ interface ModeImpactPreviewProps {
   metrics: RecommendationMetrics;
 }
 
-export function ModeImpactPreview({ metrics }: ModeImpactPreviewProps) {
+export const ModeImpactPreview = memo(function ModeImpactPreview({
+  metrics,
+}: ModeImpactPreviewProps) {
   return (
-    <section className="grid grid-cols-2 gap-2">
-      <MetricBox label="Familias" value={String(metrics.eligibleFamilies)} />
-      <MetricBox label="Personas" value={String(metrics.eligiblePersons)} />
+    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <MetricBox label="Familias que aportan" value={String(metrics.eligibleFamilies)} />
+      <MetricBox label="Personas que aportan" value={String(metrics.eligiblePersons)} />
+      <MetricBox label="Promedio por familia" value={metrics.averageFamilySize.toFixed(1)} />
       <MetricBox
-        label="Promedio"
-        value={metrics.averageFamilySize.toFixed(1)}
-      />
-      <MetricBox
-        label="Impacto"
+        label="Diferencia entre criterios"
         value={formatPercentage(metrics.averageImpactBetweenModes)}
       />
-    </section>
+    </dl>
   );
-}
+});
 
 function MetricBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-stone-200 bg-white p-3">
-      <p className="text-xs font-medium text-stone-500">{label}</p>
-      <p className="mt-1 text-2xl font-black text-stone-900">{value}</p>
+    <div className="flex flex-col-reverse rounded-xl border-2 border-ink bg-white p-3">
+      <dt className="mt-1 text-xs font-bold leading-tight text-ink-soft">{label}</dt>
+      <dd className="tabular font-mono text-2xl font-black">{value}</dd>
     </div>
   );
 }

@@ -1,16 +1,31 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { CheckIcon, CopyIcon } from "@/components/ui/icons";
 
 interface CopyResultButtonProps {
   getText: () => string;
 }
 
-export function CopyResultButton({ getText }: CopyResultButtonProps) {
+export const CopyResultButton = memo(function CopyResultButton({
+  getText,
+}: CopyResultButtonProps) {
   const [copied, setCopied] = useState(false);
   const [fallbackText, setFallbackText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!copied) return;
+    const id = window.setTimeout(() => setCopied(false), 2500);
+    return () => window.clearTimeout(id);
+  }, [copied]);
+
+  useEffect(() => {
+    if (!fallbackText) return;
+    textareaRef.current?.focus();
+    textareaRef.current?.select();
+  }, [fallbackText]);
 
   const handleCopy = async () => {
     const text = getText();
@@ -20,48 +35,38 @@ export function CopyResultButton({ getText }: CopyResultButtonProps) {
       try {
         await navigator.clipboard.writeText(text);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2500);
         return;
       } catch {
-        // Some browsers block clipboard access outside secure contexts.
+        // Algunos navegadores bloquean el portapapeles fuera de contextos seguros.
       }
     }
 
     setCopied(false);
     setFallbackText(text);
-    window.setTimeout(() => {
-      textareaRef.current?.focus();
-      textareaRef.current?.select();
-    }, 0);
   };
 
   return (
     <div className="flex flex-col gap-3">
-      <Button
-        fullWidth
-        size="lg"
-        variant={copied ? "secondary" : "primary"}
-        onClick={handleCopy}
-      >
-        {copied ? "Copiado para WhatsApp" : "Copiar resumen para WhatsApp"}
+      <Button fullWidth size="lg" onClick={handleCopy} variant={copied ? "ink" : "primary"}>
+        {copied ? <CheckIcon /> : <CopyIcon />}
+        <span aria-live="polite">
+          {copied ? "¡Copiado! Pegalo en el grupo" : "Copiar resumen para WhatsApp"}
+        </span>
       </Button>
 
       {fallbackText && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <p className="text-sm font-medium text-amber-900">
-            No se pudo copiar automáticamente.
-          </p>
-          <p className="mt-1 text-sm text-amber-800">
-            Seleccioná el texto y copialo manualmente.
-          </p>
+        <div className="rounded-xl border-2 border-ink bg-mustard-soft p-3">
+          <p className="font-bold text-mustard-text">No se pudo copiar automáticamente.</p>
+          <p className="text-sm text-mustard-text">Seleccioná el texto y copialo a mano.</p>
           <textarea
             ref={textareaRef}
             readOnly
+            aria-label="Resumen para WhatsApp"
             value={fallbackText}
-            className="mt-3 h-44 w-full rounded-lg border border-amber-200 bg-white p-3 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-orange-400"
+            className="mt-3 h-44 w-full rounded-xl border-2 border-ink bg-white p-3 font-mono text-sm"
           />
         </div>
       )}
     </div>
   );
-}
+});

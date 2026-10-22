@@ -1,60 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { memo, useRef, useState } from "react";
 import type { EventTicketPhoto } from "@/types/pdf";
+import { prepareTicketPhoto } from "@/lib/image/prepareTicketPhoto";
+import { TICKET_PHOTO_SLOT_MM } from "@/lib/pdf/ticketPhoto";
+
+const PREVIEW_ASPECT = `${TICKET_PHOTO_SLOT_MM.width} / ${TICKET_PHOTO_SLOT_MM.height}`;
 import { Button } from "@/components/ui/Button";
+import { CameraIcon } from "@/components/ui/icons";
 
 interface EventPhotoUploaderProps {
   photo: EventTicketPhoto | null;
   onPhotoChange: (photo: EventTicketPhoto | null) => void;
 }
 
-const MAX_WIDTH = 1400;
-const MAX_HEIGHT = 900;
-const JPEG_QUALITY = 0.82;
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
-    reader.readAsDataURL(file);
-  });
-}
-
-function loadImage(dataUrl: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("No se pudo procesar la imagen."));
-    image.src = dataUrl;
-  });
-}
-
-async function compressImage(file: File): Promise<EventTicketPhoto> {
-  const originalDataUrl = await readFileAsDataUrl(file);
-  const image = await loadImage(originalDataUrl);
-  const ratio = Math.min(MAX_WIDTH / image.width, MAX_HEIGHT / image.height, 1);
-  const width = Math.round(image.width * ratio);
-  const height = Math.round(image.height * ratio);
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("El navegador no permitió preparar la imagen.");
-
-  context.drawImage(image, 0, 0, width, height);
-
-  return {
-    dataUrl: canvas.toDataURL("image/jpeg", JPEG_QUALITY),
-    name: file.name,
-    type: "image/jpeg",
-    size: file.size,
-  };
-}
-
-export function EventPhotoUploader({
+export const EventPhotoUploader = memo(function EventPhotoUploader({
   photo,
   onPhotoChange,
 }: EventPhotoUploaderProps) {
@@ -73,8 +33,7 @@ export function EventPhotoUploader({
 
     try {
       setIsProcessing(true);
-      const compressedPhoto = await compressImage(file);
-      onPhotoChange(compressedPhoto);
+      onPhotoChange(await prepareTicketPhoto(file));
     } catch {
       setError("No se pudo preparar la foto. Podés generar el PDF sin imagen.");
     } finally {
@@ -84,46 +43,44 @@ export function EventPhotoUploader({
   };
 
   return (
-    <section className="rounded-lg border border-stone-200 bg-white p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-bold text-stone-900">
-            Foto opcional del evento
-          </h3>
-          <p className="mt-1 text-sm text-stone-500">
-            Se usa solo para armar el PDF. No se sube ni se guarda en historial.
+    <div className="rounded-xl border-2 border-dashed border-ink/40 p-3">
+      {photo ? (
+        // Misma proporción que el espacio del PDF: lo que ves es lo que se imprime.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photo.dataUrl}
+          alt="Foto elegida para el ticket PDF"
+          style={{ aspectRatio: PREVIEW_ASPECT }}
+          className="w-full rounded-lg border-2 border-ink object-cover"
+        />
+      ) : (
+        <div className="flex items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-ink bg-sky-soft text-xl">
+            <CameraIcon />
+          </span>
+          <p className="text-sm leading-snug text-ink-soft">
+            <span className="block font-bold text-ink">Foto del evento (opcional)</span>
+            Se usa solo para el PDF. No se sube ni se guarda.
           </p>
-        </div>
-      </div>
-
-      {photo && (
-        <div className="mt-3 overflow-hidden rounded-lg border border-stone-200">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photo.dataUrl}
-            alt="Foto seleccionada para el ticket PDF"
-            className="h-40 w-full object-cover"
-          />
         </div>
       )}
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-3 flex gap-2">
         <Button
           variant="secondary"
-          fullWidth
+          size="sm"
+          className="flex-1"
           onClick={() => inputRef.current?.click()}
           disabled={isProcessing}
         >
-          {photo ? "Cambiar foto" : "Subir foto"}
+          <CameraIcon />
+          {isProcessing ? "Preparando..." : photo ? "Cambiar foto" : "Sumar foto"}
         </Button>
-        <Button
-          variant="ghost"
-          fullWidth
-          onClick={() => onPhotoChange(null)}
-          disabled={!photo || isProcessing}
-        >
-          Quitar foto
-        </Button>
+        {photo && (
+          <Button variant="ghost" size="sm" onClick={() => onPhotoChange(null)} disabled={isProcessing}>
+            Quitar
+          </Button>
+        )}
       </div>
 
       <input
@@ -131,14 +88,16 @@ export function EventPhotoUploader({
         type="file"
         accept="image/*"
         className="sr-only"
+        tabIndex={-1}
         onChange={(event) => handleFileChange(event.target.files?.[0])}
         aria-label="Seleccionar foto opcional para el ticket PDF"
       />
 
-      {isProcessing && (
-        <p className="mt-2 text-xs text-stone-500">Preparando imagen...</p>
+      {error && (
+        <p role="alert" className="mt-2 text-sm font-bold text-morron">
+          {error}
+        </p>
       )}
-      {error && <p className="mt-2 text-xs font-medium text-red-700">{error}</p>}
-    </section>
+    </div>
   );
-}
+});

@@ -1,45 +1,65 @@
-"use client";
-import { InputHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type ReactNode } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
-  hint?: string;
+  hint?: ReactNode;
+  /** Texto fijo a la izquierda, por ejemplo "$". */
+  prefix?: string;
 }
 
-export function Input({ label, error, hint, className = "", id, ...props }: InputProps) {
-  const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
+export function Input({
+  label,
+  error,
+  hint,
+  prefix,
+  className = "",
+  id,
+  ...props
+}: InputProps) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
   const descriptionId = `${inputId}-description`;
   const hasDescription = Boolean(error || hint);
+
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       {label && (
-        <label htmlFor={inputId} className="text-sm font-medium text-stone-700">
+        <label htmlFor={inputId} className="text-sm font-bold text-ink">
           {label}
         </label>
       )}
-      <input
-        id={inputId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={hasDescription ? descriptionId : undefined}
-        {...props}
-        className={[
-          "w-full min-h-12 rounded-lg border px-4 py-3 text-base text-stone-800 placeholder-stone-400 transition focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-500",
-          error
-            ? "border-red-400 bg-red-50"
-            : "border-stone-300 bg-white hover:border-orange-300",
-          className,
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      />
+      <div className="relative">
+        {prefix && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-4 flex items-center font-mono text-lg font-bold text-muted"
+          >
+            {prefix}
+          </span>
+        )}
+        <input
+          id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={hasDescription ? descriptionId : undefined}
+          {...props}
+          className={[
+            "min-h-13 w-full rounded-xl border-2 border-ink bg-white px-4 py-3 text-lg text-ink placeholder:text-muted/70 transition-shadow focus:shadow-hard-sm focus:outline-none disabled:cursor-not-allowed disabled:bg-paper-deep disabled:text-muted",
+            prefix ? "pl-9 font-mono font-bold" : "",
+            error ? "border-morron bg-morron-soft" : "",
+            className,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        />
+      </div>
       {hint && !error && (
-        <p id={descriptionId} className="text-xs text-stone-500">
+        <p id={descriptionId} className="text-sm text-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p id={descriptionId} className="text-xs font-medium text-red-700">
+        <p id={descriptionId} className="text-sm font-bold text-morron">
           {error}
         </p>
       )}
