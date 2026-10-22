@@ -42,3 +42,9 @@ next-env.d.ts
 
 # codegraph
 .codegraph/
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
