@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
         // Íconos e imagen social: no llevan hash en el nombre, pero cambian
         // poco. Un día de cache fresca y una semana sirviendo mientras revalida.
         source:
-          "/:file(icon-192.png|icon-512.png|icon-maskable-512.png|apple-icon.png|opengraph-image.png)",
+          "/:file(icon.svg|favicon.ico|icon-192.png|icon-512.png|icon-maskable-512.png|apple-icon.png|opengraph-image.jpg)",
         headers: [
           {
             key: "Cache-Control",
