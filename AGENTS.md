@@ -11,13 +11,20 @@
 - TypeScript
 - Tailwind CSS v4
 - nanoid
-- jsPDF para generación estructurada del PDF
+- jsPDF para generación estructurada del PDF (carga diferida)
+- Vitest (unitarios) y Playwright (E2E)
 - Sin backend, sin base de datos, sin autenticación
 
 ## Arquitectura
 
-- `app/page.tsx`: estado global y orquestación del flujo.
+- `app/page.tsx`: landing estática (Server Components).
+- `app/calcular/page.tsx`: shell de la calculadora y script anti-flash.
+- `components/calculator/CalculatorApp.tsx`: estado global (`useReducer`) y orquestación del flujo.
+- `components/landing/`: secciones de la landing.
 - `components/`: UI por paso y componentes base.
+- `lib/flow/`: reducer puro del flujo, derivados (`deriveEventInsights`, `deriveSettlement`), arranque y evento de ejemplo.
+- `lib/forms/`: validación del formulario de familias.
+- `lib/image/`: recorte y compresión de la foto del ticket.
 - `types/`: contratos TypeScript entre capas.
 - `lib/calculations/`: funciones puras de elegibilidad, recomendación, balances y transferencias.
 - `lib/formatting/`: formateo de moneda y porcentajes.
@@ -25,7 +32,8 @@
 - `lib/pdf/`: generación estructurada del ticket PDF final.
 - `lib/storage/`: acceso defensivo a `localStorage`.
 - `hooks/`: coordinación cliente, por ejemplo `useEventDraft`.
-- `docs/`: documentación funcional y técnica.
+- `docs/`: documentación funcional y técnica (incluye `docs/performance.md`).
+- `tests/`: unitarios. `e2e/`: flujos reales con Playwright. `scripts/perf/`: medición.
 - `app/ayuda/page.tsx` y `components/help/`: ayuda visible para usuarios finales.
 
 ## Reglas de negocio
@@ -54,6 +62,7 @@ quien-puso-que:closed-events
 
 Reglas:
 
+- Acceder siempre vía `lib/storage/browserStorage.ts`.
 - Solo acceder a `localStorage` del lado cliente.
 - Validar todo dato recuperado antes de usarlo.
 - No romper SSR ni hydration.
@@ -81,6 +90,8 @@ Reglas:
 - No guardar datos fuera de `localStorage`.
 - No persistir fotos del ticket sin decisión explícita.
 - No agregar dependencias por conveniencia menor.
+- No importar jsPDF de forma estática ni meterlo en el bundle inicial.
+- No empeorar las métricas de `docs/performance.md` sin medir y justificar.
 - No presentar roadmap como funcionalidad hecha.
 - No convertir la ayuda en documentación técnica ni duplicar lógica de cálculo.
 
@@ -89,6 +100,7 @@ Reglas:
 - Fórmulas: `README.md`, `docs/calculation-model.md`, `docs/examples.md`.
 - Recomendación: `README.md`, `docs/recommendation-criteria.md`.
 - Flujo o UI: `README.md`, `docs/ux-flow.md`.
+- Rendimiento: `docs/performance.md`.
 - Storage: `README.md`, `docs/ux-flow.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`.
 - PDF: `README.md`, `docs/pdf-ticket.md`, `docs/ux-flow.md`, `docs/examples.md`.
 - Ayuda de usuario: `README.md`, `docs/ux-flow.md`, `components/help/`.
@@ -106,4 +118,5 @@ Verificar:
 npm test
 npm run lint
 npm run build
+npm run test:e2e
 ```

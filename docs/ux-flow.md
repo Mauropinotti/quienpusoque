@@ -2,74 +2,97 @@
 
 La app está pensada para usarse desde el celular, en una mesa, con poca paciencia y bastante hambre. Tiene que ser clara, rápida y confiable.
 
-## Flujo guiado
+## Rutas
 
 ```text
-setup -> families -> recommendation -> results
+/          landing (presentación + botón de inicio)
+/calcular  calculadora: setup -> families -> recommendation -> results
+/ayuda     guía para usuarios no técnicos
 ```
 
-La app incluye una ruta de ayuda visible:
+Todas se prerenderizan estáticas. No hay backend.
 
-```text
-/ayuda
-```
+## Lenguaje visual
 
-El link `¿Cómo funciona?` aparece en el header principal y lleva a una guía breve para usuarios no técnicos.
+"Papel, brasa y carbón": fondo de papel punteado, bordes de tinta, sombras
+duras y acentos color brasa. El resultado se presenta como un **ticket
+térmico** con bordes en zigzag, que es también el objeto que se comparte.
+
+- Texto siempre en tinta sobre brasa (el blanco sobre brasa no pasa contraste).
+- Números en monoespaciada con cifras tabulares.
+- Animaciones solo en CSS. Con `prefers-reduced-motion` se desactivan.
+
+## Landing (`/`)
+
+Objetivo: explicar en segundos qué hace la app y llevar al cálculo.
+
+- Título con palabras que rotan: "¿Quién puso el carbón? / el hielo? / … / qué?"
+- Botón principal **Empezar el cálculo** → `/calcular`.
+- Link secundario **Ver un asado de ejemplo** → `/calcular?demo=1`.
+- Ticket de muestra calculado en build con el motor real (no es una imagen).
+- Cinta animada, "Tres pasos y a la sobremesa" y bloque de privacidad.
+
+## Arranque de la calculadora
+
+El estado vive en el navegador, así que la calculadora se monta del lado
+cliente. Para que eso no se note:
+
+- Visitante nuevo: el HTML ya trae una réplica inerte del paso 1; cuando la
+  app monta, la reemplaza sin moverse nada.
+- Hay borrador o `?demo`: un script inline marca `<html data-calc-resume>`
+  antes del primer paint y se muestra un skeleton neutro. Nunca aparece el
+  paso 1 para después saltar a otro paso.
+- `?demo` carga el ejemplo y se quita de la URL, para que recargar no pise lo
+  que el usuario edite después.
 
 ## 1. Setup
 
 Objetivo: crear el evento.
 
-UI:
-
-- título de la app
-- input de nombre del evento
-- botón para avanzar a familias
-- acción para probar datos de ejemplo
-- link visible a la ayuda
-
-Reglas:
-
-- el nombre es requerido para avanzar
-- si hay un borrador recuperado con solo nombre, se vuelve a este paso
+- Pregunta: "¿Cómo se llama la juntada?"
+- Input `Nombre del evento` dentro de un `<form>`: Enter avanza.
+- Sugerencias rápidas: Asado del sábado, Cumple, Escapada, Cena de fin de año.
+- Botón `Cargar familias` (deshabilitado sin nombre).
+- Tarjeta `Probar con datos de ejemplo`.
+- Si hay borrador: aviso y `Empezar de nuevo`.
+- Historial de cuentas cerradas debajo.
 
 ## 2. Families
 
 Objetivo: cargar y mantener la lista de participantes.
 
-Formulario:
+Formulario `Sumá una familia`:
 
 - nombre
-- cantidad de integrantes
+- integrantes del 1 al 5 (botones con puntitos)
 - selector Adulto/Menor si tiene 1 integrante
-- monto pagado (bloqueado en $0 si es 1 menor)
-- nota o detalle
+- monto pagado con prefijo `$` (bloqueado en $0 si es 1 menor); acepta coma o punto decimal
+- nota o detalle opcional
+- los errores aparecen al intentar agregar, no mientras se tipea
 
-Lista:
+La validación vive en `lib/forms/familyForm.ts`.
 
-- tarjetas claras por familia
-- monto pagado destacado
+Lista `En la mesa`:
+
+- tarjeta por familia con avatar, integrantes, nota y monto
 - badge `No aporta` para menor solo
-- edición inline
-- eliminación con confirmación visual
-- total acumulado
+- edición inline y eliminación con confirmación
+- avisos si no hay gasto o falta una familia que aporte
 
-Acciones:
-
-- `Ver recomendación` cuando hay al menos 2 familias
-- `Empezar de nuevo` para borrar estado actual y borrador local
+Barra fija inferior con el total puesto y `Ver recomendación` (requiere al
+menos 2 familias y 2 habilitadas).
 
 ## 3. Recommendation
 
 Objetivo: explicar el criterio sugerido y permitir decisión manual.
 
-UI:
-
-- recomendación destacada
-- señal visual de fuerza de la sugerencia
-- razones breves
-- selector `Por familia` / `Por persona`
-- botón `Ver resultado`
+- Tarjeta "Nuestra sugerencia" con el criterio, medidor de confianza y razones.
+- Selector `Por familia` / `Por persona` con radios nativos (flechas del
+  teclado y lectores de pantalla funcionan sin código extra).
+- Tabla **Así le toca a cada uno**: lo que pondría cada familia con cada
+  criterio, resaltando el elegido.
+- Métricas del grupo.
+- Botón fijo `Ver resultado`.
 
 Reglas:
 
@@ -81,18 +104,15 @@ Reglas:
 
 Objetivo: cerrar la cuenta.
 
-UI:
-
-- total del evento
-- criterio usado
-- balances
-- transferencias sugeridas
-- botón `Guardar evento cerrado`
-- selector de foto opcional para el ticket PDF
-- botón `Descargar ticket PDF`
-- botón para copiar resumen para WhatsApp
-- botón `Editar familias`
-- botón `Nuevo evento`
+- Título `¡Cuenta cerrada!`.
+- El ticket: balances por familia con su estado, total, criterio con cuota
+  unitaria y **Quién le pasa a quién** con las transferencias numeradas.
+- Bloque `Compartir y cerrar`:
+  - `Copiar resumen para WhatsApp`
+  - `Descargar ticket PDF`
+  - foto opcional del evento
+  - `Guardar en el historial`
+- `Editar familias` y `Nuevo evento` (este último pide confirmación).
 
 Badges:
 
@@ -113,12 +133,13 @@ El usuario puede seleccionar una foto opcional y descargar un ticket PDF desde r
 
 La foto:
 
-- se procesa localmente
+- se procesa localmente (`lib/image/prepareTicketPhoto.ts`)
+- se recorta a la proporción del PDF; la vista previa muestra exactamente ese recorte
 - no se sube a servidores
 - no se guarda en historial
 - no se persiste en el borrador
 
-El PDF se genera con datos estructurados del cálculo, no capturando la pantalla. Si no hay foto, se genera igual.
+El PDF se genera con datos estructurados del cálculo, no capturando la pantalla. Si no hay foto, se genera igual. Ver `docs/pdf-ticket.md`.
 
 ## Persistencia local del borrador
 
@@ -139,11 +160,16 @@ Datos:
 - fecha de creación
 - fecha de última edición
 
-La lectura se hace solo del lado cliente, después de hydration.
+Cuándo se escribe:
+
+- con debounce de 400 ms (tipear un nombre es una sola escritura)
+- solo si el contenido cambió
+- siempre al ocultar o cerrar la pestaña (`pagehide` / `visibilitychange`)
 
 ## Recuperación del borrador
 
-Antes de restaurar, se validan estructura, familias, modos y fecha.
+La lectura ocurre solo en el cliente, al inicializar el estado de la
+calculadora. Antes de restaurar, se validan estructura, familias, modos y fecha.
 
 Destino:
 
@@ -157,7 +183,7 @@ Si el storage falla o trae datos inválidos, se ignora el borrador y la app arra
 
 `Empezar de nuevo` y `Nuevo evento` limpian:
 
-- estado React
+- estado de la calculadora
 - selección de criterio
 - aceptación de recomendación
 - borrador de `localStorage`
@@ -176,15 +202,17 @@ Se guarda en:
 quien-puso-que:closed-events
 ```
 
-Guardar un evento cerrado no borra automáticamente el borrador. El usuario puede seguir editando o empezar uno nuevo.
+Guardar un evento cerrado no borra automáticamente el borrador. El usuario puede seguir editando o empezar uno nuevo. Si el navegador no permite guardar, se muestra un aviso.
 
 ## Historial local
 
-El historial se muestra en el inicio de la app. Cada tarjeta permite:
+El historial se muestra en el paso 1 como `Cuentas cerradas`. Cada tarjeta permite:
 
 - ver total, fecha, criterio y cantidad de familias
 - desplegar transferencias
 - borrar el evento cerrado con confirmación visual
+
+La lista se actualiza sola al guardar o borrar, y también si se modifica desde otra pestaña.
 
 Si `localStorage` está vacío, se muestra un estado vacío y el flujo principal sigue igual.
 
@@ -209,4 +237,9 @@ La página `/ayuda` explica:
 - balances, cobros, pagos y transferencias
 - salidas: pantalla, WhatsApp, PDF e historial local
 
-El botón final vuelve al flujo principal. Si hay borrador local, el texto indica `Ir a realizar el cálculo`; si no lo hay, indica `Generar el primer cálculo`.
+El botón final vuelve a la calculadora. Si hay borrador local, dice `Seguir con mi cuenta`; si no, `Empezar el cálculo`.
+
+## Errores y páginas inexistentes
+
+- `app/not-found.tsx`: 404 con salida a la calculadora y al inicio.
+- `app/error.tsx`: si algo falla al renderizar, permite reintentar; el borrador sigue guardado.

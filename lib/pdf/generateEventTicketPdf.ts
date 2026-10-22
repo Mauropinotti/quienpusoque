@@ -3,6 +3,8 @@ import type { EventTicketPdfData } from "@/types/pdf";
 import type { BalanceStatus } from "@/types/calculation";
 import type { Family, SplitMode } from "@/types/family";
 import { formatCurrency } from "@/lib/formatting/formatCurrency";
+import { formatMediumDateTime } from "@/lib/formatting/formatDate";
+import { TICKET_PHOTO_SLOT_MM } from "./ticketPhoto";
 
 const PAGE_WIDTH = 210;
 const PAGE_HEIGHT = 297;
@@ -10,25 +12,22 @@ const MARGIN = 10;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 const LINE_HEIGHT = 4.2;
 
+// Misma paleta que la app (papel, brasa y carbón).
 const COLOR = {
-  orange: "#ea580c",
-  orangeLight: "#fff7ed",
-  stone950: "#1c1917",
-  stone700: "#44403c",
-  stone500: "#78716c",
-  stone200: "#e7e5e4",
-  red: "#b91c1c",
-  green: "#047857",
-  blue: "#0369a1",
-  amber: "#b45309",
+  ember: "#ff5b1f",
+  ink: "#1b1410",
+  paper: "#fff6e9",
+  paperRow: "#fbf4ea",
+  line: "#e6d6bd",
+  stone950: "#1b1410",
+  stone700: "#5c4f45",
+  stone500: "#6b5d52",
+  stone200: "#e6d6bd",
+  red: "#b4182d",
+  green: "#1f6b2a",
+  blue: "#0b5a8a",
+  amber: "#8a5a00",
 };
-
-function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("es-AR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
 
 function slugify(value: string): string {
   return value
@@ -72,10 +71,6 @@ function familyKind(family: Family): string {
 
 function memberLabel(family: Family): string {
   return family.members === 1 ? "1" : String(family.members);
-}
-
-function getFamilyById(families: Family[], id: string): Family | undefined {
-  return families.find((family) => family.id === id);
 }
 
 function getTotalAmount(data: EventTicketPdfData): number {
@@ -137,8 +132,9 @@ function ensureSpace(doc: jsPDF, y: number, needed: number): number {
   return MARGIN;
 }
 
-function addSectionTitle(doc: jsPDF, title: string, y: number): number {
-  y = ensureSpace(doc, y, 9);
+/** El título reserva lugar para su primer bloque: nunca queda huérfano al pie. */
+function addSectionTitle(doc: jsPDF, title: string, y: number, keepWithNext = 14): number {
+  y = ensureSpace(doc, y, 9 + keepWithNext);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(COLOR.stone950);
@@ -170,29 +166,28 @@ function addSummaryGrid(doc: jsPDF, data: EventTicketPdfData, y: number): number
     ["Recomendado", recommended],
   ];
 
-  const columns = 2;
+  // 3 columnas x 2 filas: el ticket con foto entra en una sola hoja.
+  const columns = 3;
   const gap = 4;
-  const boxWidth = (CONTENT_WIDTH - gap) / columns;
+  const boxWidth = (CONTENT_WIDTH - gap * (columns - 1)) / columns;
   const boxHeight = 14;
 
   for (let index = 0; index < items.length; index += 1) {
     y = ensureSpace(doc, y, boxHeight + 4);
-    const row = Math.floor(index / columns);
     const col = index % columns;
     const x = MARGIN + col * (boxWidth + gap);
-    const boxY = y + row * 0;
 
-    doc.setFillColor(COLOR.orangeLight);
-    doc.setDrawColor("#fed7aa");
-    doc.roundedRect(x, boxY, boxWidth, boxHeight, 2, 2, "FD");
+    doc.setFillColor(COLOR.paper);
+    doc.setDrawColor(COLOR.line);
+    doc.roundedRect(x, y, boxWidth, boxHeight, 2, 2, "FD");
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(COLOR.stone500);
-    doc.text(items[index][0], x + 3, boxY + 6);
+    doc.text(items[index][0], x + 3, y + 5.5);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9.5);
     doc.setTextColor(COLOR.stone950);
-    doc.text(items[index][1], x + 3, boxY + 13);
+    doc.text(items[index][1], x + 3, y + 11);
 
     if (col === columns - 1 || index === items.length - 1) {
       y += boxHeight + 4;
@@ -221,12 +216,18 @@ function addFamiliesTable(doc: jsPDF, data: EventTicketPdfData, y: number): numb
   });
   y += rowHeight;
 
+  // Índice por id: antes cada fila hacía un find() sobre todas las familias
+  // (O(n²), el clásico N+1 aplicado a un array).
+  const familiesById = new Map(
+    data.families.map((family) => [family.id, family])
+  );
+
   data.balances.forEach((balance, index) => {
-    const family = getFamilyById(data.families, balance.familyId);
+    const family = familiesById.get(balance.familyId);
     y = ensureSpace(doc, y, rowHeight * 2);
 
     if (index % 2 === 0) {
-      doc.setFillColor("#fafaf9");
+      doc.setFillColor(COLOR.paperRow);
       doc.rect(MARGIN, y, CONTENT_WIDTH, rowHeight, "F");
     }
 
@@ -257,7 +258,7 @@ function addFamiliesTable(doc: jsPDF, data: EventTicketPdfData, y: number): numb
     y += rowHeight;
   });
 
-  return y + 4;
+  return y + 7;
 }
 
 function addNonContributors(doc: jsPDF, data: EventTicketPdfData, y: number): number {
@@ -306,11 +307,14 @@ function addTransfers(doc: jsPDF, data: EventTicketPdfData, y: number): number {
 function addPhoto(doc: jsPDF, data: EventTicketPdfData, y: number): number {
   if (!data.photo?.dataUrl) return y;
 
-  y = ensureSpace(doc, y, 40);
+  // La foto ya llega recortada al aspecto del espacio (lib/image), así que se
+  // dibuja sin deformar.
+  const { width, height } = TICKET_PHOTO_SLOT_MM;
+  y = ensureSpace(doc, y, height + 4);
 
   try {
-    doc.addImage(data.photo.dataUrl, "JPEG", MARGIN, y, CONTENT_WIDTH, 36, undefined, "FAST");
-    return y + 40;
+    doc.addImage(data.photo.dataUrl, "JPEG", MARGIN, y, width, height, undefined, "FAST");
+    return y + height + 8;
   } catch {
     return addParagraph(
       doc,
@@ -318,6 +322,21 @@ function addPhoto(doc: jsPDF, data: EventTicketPdfData, y: number): number {
       y
     );
   }
+}
+
+/** Nota de cierre: pie discreto, sin título, separado por una línea. */
+function addClosingNote(doc: jsPDF, y: number): number {
+  const text =
+    "Este ticket fue generado localmente con ¿Quién puso qué?. La app calcula el reparto según los datos cargados por el usuario. ¡Cuentas claras siempre!";
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7.5);
+  const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
+  y = ensureSpace(doc, y, lines.length * LINE_HEIGHT + 5);
+  doc.setDrawColor(COLOR.line);
+  doc.line(MARGIN, y, MARGIN + 40, y);
+  doc.setTextColor(COLOR.stone500);
+  doc.text(lines, MARGIN, y + 4);
+  return y + 4 + lines.length * LINE_HEIGHT;
 }
 
 export function buildEventTicketPdfFileName(
@@ -332,15 +351,18 @@ export function generateEventTicketPdf(data: EventTicketPdfData): void {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   let y = MARGIN;
 
-  doc.setFillColor(COLOR.orange);
+  doc.setFillColor(COLOR.ink);
   doc.roundedRect(MARGIN, y, CONTENT_WIDTH, 18, 3, 3, "F");
+  doc.setFillColor(COLOR.ember);
+  doc.rect(MARGIN + 5, y + 15, 24, 1.2, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
   doc.setTextColor("#ffffff");
-  doc.text(data.appName, MARGIN + 5, y + 7);
+  doc.text(data.appName, MARGIN + 5, y + 8);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  doc.text("Ticket final de cálculo", MARGIN + 5, y + 14);
+  doc.setTextColor(COLOR.paper);
+  doc.text("Ticket final de cálculo", MARGIN + CONTENT_WIDTH - 5, y + 8, { align: "right" });
   y += 24;
 
   doc.setFont("helvetica", "bold");
@@ -352,7 +374,7 @@ export function generateEventTicketPdf(data: EventTicketPdfData): void {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(COLOR.stone500);
-  doc.text(`Generado el ${formatDate(data.generatedAt)}`, MARGIN, y);
+  doc.text(`Generado el ${formatMediumDateTime(data.generatedAt)}`, MARGIN, y);
   y += 6;
 
   y = addPhoto(doc, data, y);
@@ -364,13 +386,7 @@ export function generateEventTicketPdf(data: EventTicketPdfData): void {
   y = addFamiliesTable(doc, data, y);
   y = addNonContributors(doc, data, y);
   y = addTransfers(doc, data, y);
-  y = addSectionTitle(doc, "Nota de cierre", y);
-  y = addParagraph(
-    doc,
-    "Este ticket fue generado localmente con ¿Quién puso qué?. La app calcula el reparto según los datos cargados por el usuario.",
-    y
-  );
-  y = addParagraph(doc, "Cuentas claras siempre!", y);
+  addClosingNote(doc, y);
 
   addFooter(doc);
   doc.save(buildEventTicketPdfFileName(data.eventName, data.generatedAt));

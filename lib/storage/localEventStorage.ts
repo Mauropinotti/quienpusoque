@@ -1,6 +1,13 @@
 import type { EventData } from "@/types/event";
-import type { Family, SingleMemberType, SplitMode } from "@/types/family";
+import type { Family, SplitMode } from "@/types/family";
 import { isSingleMinor } from "@/lib/calculations/eligibility";
+import {
+  getBrowserStorage,
+  readStorageJson,
+  removeStorageKey,
+  writeStorageString,
+} from "./browserStorage";
+import { isRecord, isSplitMode, isValidFamily } from "./validators";
 
 export const CURRENT_DRAFT_STORAGE_KEY = "quien-puso-que:current-draft";
 
@@ -23,50 +30,6 @@ export interface SaveEventDraftInput {
   selectedMode: SplitMode;
   recommendationAccepted: boolean | null;
   createdAt: string;
-}
-
-function canUseLocalStorage(): boolean {
-  if (typeof window === "undefined") return false;
-
-  try {
-    const testKey = `${CURRENT_DRAFT_STORAGE_KEY}:test`;
-    window.localStorage.setItem(testKey, "1");
-    window.localStorage.removeItem(testKey);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isSplitMode(value: unknown): value is SplitMode {
-  return value === "by-family" || value === "by-person";
-}
-
-function isSingleMemberType(value: unknown): value is SingleMemberType {
-  return value === "adult" || value === "minor" || value === null;
-}
-
-function isValidFamily(value: unknown): value is Family {
-  if (!isRecord(value)) return false;
-
-  const { id, name, members, singleMemberType, paidAmount, notes } = value;
-
-  if (typeof id !== "string" || id.trim() === "") return false;
-  if (typeof name !== "string" || name.trim() === "") return false;
-  if (typeof members !== "number") return false;
-  if (!Number.isInteger(members) || members < 1 || members > 5) return false;
-  if (!isSingleMemberType(singleMemberType)) return false;
-  if (members === 1 && singleMemberType === null) return false;
-  if (members > 1 && singleMemberType !== null) return false;
-  if (typeof paidAmount !== "number" || !Number.isFinite(paidAmount)) return false;
-  if (paidAmount < 0) return false;
-  if (notes !== undefined && typeof notes !== "string") return false;
-
-  return true;
 }
 
 function parseDraft(value: unknown): LocalEventDraft | null {
@@ -122,16 +85,47 @@ function parseDraft(value: unknown): LocalEventDraft | null {
   };
 }
 
-export function readCurrentEventDraft(): LocalEventDraft | null {
-  if (!canUseLocalStorage()) return null;
+/**
+ * Huella del contenido persistible (sin `updatedAt`). Si no cambió, no hace
+ * falta volver a escribir el borrador.
+ */
+export function getDraftFingerprint({
+  eventData,
+  selectedMode,
+  recommendationAccepted,
+  createdAt,
+}: SaveEventDraftInput): string {
+  return JSON.stringify([
+    eventData.eventName,
+    eventData.currency,
+    eventData.splitMode,
+    eventData.families,
+    selectedMode,
+    recommendationAccepted,
+    createdAt,
+  ]);
+}
 
+/** Un borrador vacío no vale la pena guardarlo: se borra. */
+export function hasDraftContent(eventData: EventData): boolean {
+  return (
+    eventData.eventName.trim().length > 0 ||
+    eventData.families.length > 0 ||
+    eventData.splitMode !== null
+  );
+}
+
+/** Chequeo barato (sin parsear) para textos de UI como "seguir con tu cuenta". */
+export function hasStoredDraft(): boolean {
   try {
-    const raw = window.localStorage.getItem(CURRENT_DRAFT_STORAGE_KEY);
-    if (!raw) return null;
-    return parseDraft(JSON.parse(raw));
+    return getBrowserStorage()?.getItem(CURRENT_DRAFT_STORAGE_KEY) != null;
   } catch {
-    return null;
+    return false;
   }
+}
+
+export function readCurrentEventDraft(): LocalEventDraft | null {
+  return parseDraft(readStorageJson(CURRENT_DRAFT_STORAGE_KEY));
 }
 
 export function saveCurrentEventDraft({
@@ -140,8 +134,6 @@ export function saveCurrentEventDraft({
   recommendationAccepted,
   createdAt,
 }: SaveEventDraftInput): LocalEventDraft | null {
-  if (!canUseLocalStorage()) return null;
-
   const draft: LocalEventDraft = {
     version: DRAFT_VERSION,
     eventName: eventData.eventName,
@@ -154,21 +146,11 @@ export function saveCurrentEventDraft({
     updatedAt: new Date().toISOString(),
   };
 
-  try {
-    window.localStorage.setItem(CURRENT_DRAFT_STORAGE_KEY, JSON.stringify(draft));
-    return draft;
-  } catch {
-    return null;
-  }
+  return writeStorageString(CURRENT_DRAFT_STORAGE_KEY, JSON.stringify(draft))
+    ? draft
+    : null;
 }
 
 export function clearCurrentEventDraft(): boolean {
-  if (!canUseLocalStorage()) return false;
-
-  try {
-    window.localStorage.removeItem(CURRENT_DRAFT_STORAGE_KEY);
-    return true;
-  } catch {
-    return false;
-  }
+  return removeStorageKey(CURRENT_DRAFT_STORAGE_KEY);
 }

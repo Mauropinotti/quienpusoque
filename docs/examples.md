@@ -185,7 +185,7 @@ Puede quedar una discrepancia de $1 por redondeo. Es esperable.
 
 ## Ejemplo 7: evento cerrado guardado en historial
 
-Después de confirmar el resultado del **Asado del sábado**, el usuario toca `Guardar evento cerrado`.
+Después de confirmar el resultado del **Asado del sábado**, el usuario toca `Guardar en el historial`.
 
 La app guarda localmente una estructura de este estilo:
 
@@ -249,9 +249,8 @@ Transferencias sugeridas
 Los López le transfiere $4.000 a Los García
 Los Rodríguez le transfiere $1.000 a Los Fernández
 
-Este ticket fue generado localmente con ¿Quién puso qué?.
-Cuentas claras siempre!
+Este ticket fue generado localmente con ¿Quién puso qué?. ¡Cuentas claras siempre!
 desarrollado por MauroHP - Lista 127 8B 2026.-
 ```
 
-Si el usuario selecciona una foto, aparece arriba como portada simple. La imagen se usa solo para el PDF actual.
+Si el usuario selecciona una foto, aparece arriba como portada de 190 × 64 mm, recortada sin deformar. La imagen se usa solo para el PDF actual.

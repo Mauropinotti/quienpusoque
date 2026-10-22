@@ -1,24 +1,27 @@
 const criteria = [
-  "Una familia de 1 adulto paga.",
-  "Una familia de 1 menor no paga.",
-  "Una familia de 2 o más integrantes paga.",
-  "Las familias que no pagan pueden aparecer en el resumen, pero no se incluyen en la cuota.",
+  { who: "1 adulto", rule: "paga su parte", tone: "bg-chimi-soft" },
+  { who: "1 menor", rule: "no paga: es invitado", tone: "bg-mustard" },
+  { who: "2 o más", rule: "pagan según el criterio", tone: "bg-chimi-soft" },
 ];
 
 export function EligibilityCriteriaCard() {
   return (
-    <section className="rounded-lg border border-orange-200 bg-orange-50 p-4">
-      <h2 className="text-lg font-black text-stone-950">
-        Criterios de elegibilidad
-      </h2>
-      <ul className="mt-3 space-y-2">
+    <section className="rounded-[1.25rem] border-2 border-ink bg-ink p-5 text-paper shadow-[4px_4px_0_0_var(--color-ember)] sm:p-6">
+      <h2 className="font-display text-2xl sm:text-3xl">¿Quién aporta?</h2>
+      <ul className="mt-4 grid gap-2 sm:grid-cols-3">
         {criteria.map((criterion) => (
-          <li key={criterion} className="flex gap-2 text-sm leading-6 text-stone-700">
-            <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-orange-600" />
-            <span>{criterion}</span>
+          <li
+            key={criterion.who}
+            className={`rounded-xl border-2 border-paper/20 p-3 text-ink ${criterion.tone}`}
+          >
+            <span className="block font-mono text-lg font-black">{criterion.who}</span>
+            <span className="text-sm font-bold">{criterion.rule}</span>
           </li>
         ))}
       </ul>
+      <p className="mt-4 text-sm text-paper/80">
+        Las familias que no aportan aparecen en el resumen, pero no se incluyen en la cuota.
+      </p>
     </section>
   );
 }

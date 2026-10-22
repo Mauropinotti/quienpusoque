@@ -1,27 +1,27 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 interface CardProps {
   children: ReactNode;
   className?: string;
   padding?: "sm" | "md" | "lg";
+  as?: "div" | "section" | "article";
 }
 
 const paddingClasses = {
   sm: "p-3",
-  md: "p-4",
-  lg: "p-6",
+  md: "p-4 sm:p-5",
+  lg: "p-5 sm:p-7",
 };
 
-export function Card({ children, className = "", padding = "md" }: CardProps) {
+export function Card({
+  children,
+  className = "",
+  padding = "md",
+  as: Tag = "div",
+}: CardProps) {
   return (
-    <div
-      className={[
-        "rounded-lg bg-white shadow-sm border border-stone-200",
-        paddingClasses[padding],
-        className,
-      ].join(" ")}
-    >
+    <Tag className={["paper-card", paddingClasses[padding], className].join(" ")}>
       {children}
-    </div>
+    </Tag>
   );
 }

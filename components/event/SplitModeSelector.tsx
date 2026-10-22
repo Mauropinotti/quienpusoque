@@ -1,7 +1,7 @@
 "use client";
 
+import { memo } from "react";
 import type { SplitMode } from "@/types/family";
-import { Badge } from "@/components/ui/Badge";
 
 interface SplitModeSelectorProps {
   value: SplitMode;
@@ -13,61 +13,56 @@ const options: { value: SplitMode; label: string; description: string }[] = [
   {
     value: "by-family",
     label: "Por familia",
-    description: "Cada familia habilitada paga una parte igual.",
+    description: "Cada familia habilitada pone lo mismo.",
   },
   {
     value: "by-person",
     label: "Por persona",
-    description: "Se reparte por integrantes habilitados para aportar.",
+    description: "Cada integrante habilitado cuenta como una parte.",
   },
 ];
 
-export function SplitModeSelector({
+/** Radios nativos: navegación con flechas y lectores de pantalla sin trabajo extra. */
+export const SplitModeSelector = memo(function SplitModeSelector({
   value,
   onChange,
   recommendedMode,
 }: SplitModeSelectorProps) {
   return (
-    <div className="flex flex-col gap-2">
-      {options.map((option) => {
-        const isSelected = value === option.value;
-
-        return (
-          <button
+    <fieldset>
+      <legend className="sr-only">Criterio de reparto</legend>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {options.map((option) => (
+          <label
             key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            className={[
-              "flex min-h-20 items-start gap-3 rounded-lg border p-4 text-left transition-all focus:outline-none focus:ring-2 focus:ring-orange-400",
-              isSelected
-                ? "border-orange-500 bg-orange-50"
-                : "border-stone-200 bg-white hover:border-orange-200",
-            ].join(" ")}
+            className="relative flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-ink bg-white p-4 transition-all has-[:checked]:bg-ember has-[:checked]:shadow-hard has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-3 has-[:focus-visible]:outline-ink"
           >
+            <input
+              type="radio"
+              name="split-mode"
+              value={option.value}
+              checked={value === option.value}
+              onChange={() => onChange(option.value)}
+              className="peer sr-only"
+            />
             <span
-              className={[
-                "mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                isSelected ? "border-orange-600" : "border-stone-300",
-              ].join(" ")}
-            >
-              {isSelected && (
-                <span className="h-2.5 w-2.5 rounded-full bg-orange-600" />
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
+              aria-hidden="true"
+              className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 border-ink bg-white after:h-3 after:w-3 after:scale-0 after:rounded-full after:bg-ink after:transition-transform peer-checked:after:scale-100"
+            />
+            <span className="min-w-0">
               <span className="flex flex-wrap items-center gap-2">
-                <span className="font-bold text-stone-900">{option.label}</span>
+                <span className="text-lg font-bold">{option.label}</span>
                 {recommendedMode === option.value && (
-                  <Badge variant="neutral" label="Recomendado" />
+                  <span className="rounded-full border-[1.5px] border-ink bg-lime px-2 py-0.5 text-xs font-bold">
+                    Recomendado
+                  </span>
                 )}
               </span>
-              <span className="mt-1 block text-sm leading-5 text-stone-600">
-                {option.description}
-              </span>
+              <span className="mt-1 block text-sm leading-snug">{option.description}</span>
             </span>
-          </button>
-        );
-      })}
-    </div>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
-}
+});

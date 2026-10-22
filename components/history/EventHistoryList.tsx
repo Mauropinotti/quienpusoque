@@ -1,56 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { ClosedEvent } from "@/types/event";
+import { memo, useCallback, useState, useSyncExternalStore } from "react";
 import {
   clearClosedEvents,
   deleteClosedEvent,
-  readClosedEvents,
+  getClosedEventsSnapshot,
+  getServerClosedEventsSnapshot,
+  subscribeToClosedEvents,
 } from "@/lib/storage/closedEventsStorage";
-import { EventHistoryCard } from "./EventHistoryCard";
 import { Button } from "@/components/ui/Button";
+import { EventHistoryCard } from "./EventHistoryCard";
 
-interface EventHistoryListProps {
-  refreshKey?: number;
-}
-
-export function EventHistoryList({ refreshKey = 0 }: EventHistoryListProps) {
-  const [events, setEvents] = useState<ClosedEvent[]>([]);
+// Se suscribe al store en memoria del historial: guardar o borrar actualiza la
+// lista sin releer ni revalidar localStorage, y se sincroniza entre pestañas.
+// memo: no tiene props, así que tipear en el paso 1 no la re-renderiza.
+export const EventHistoryList = memo(function EventHistoryList() {
+  const events = useSyncExternalStore(
+    subscribeToClosedEvents,
+    getClosedEventsSnapshot,
+    getServerClosedEventsSnapshot
+  );
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setEvents(readClosedEvents());
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [refreshKey]);
-
-  const handleDelete = (eventId: string) => {
-    setEvents(deleteClosedEvent(eventId));
-  };
+  const handleDelete = useCallback((eventId: string) => {
+    deleteClosedEvent(eventId);
+  }, []);
 
   const handleClearAll = () => {
-    setEvents(clearClosedEvents());
+    clearClosedEvents();
     setIsConfirmingClear(false);
   };
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-3">
+    <section aria-labelledby="history-title" className="mt-6 flex flex-col gap-3">
+      <div className="flex items-end justify-between gap-3">
         <div>
-        <h2 className="text-lg font-bold text-stone-900">
-          Historial en este navegador
-        </h2>
-        <p className="mt-1 text-sm text-stone-500">
-          Eventos cerrados que guardaste localmente.
-        </p>
+          <h2 id="history-title" className="font-display text-3xl">
+            Cuentas cerradas
+          </h2>
+          <p className="text-sm text-ink-soft">Guardadas solo en este navegador.</p>
         </div>
         {events.length > 0 && !isConfirmingClear && (
           <button
             type="button"
             onClick={() => setIsConfirmingClear(true)}
-            className="min-h-10 shrink-0 rounded-lg px-2 text-sm font-semibold text-stone-500 transition hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-orange-400"
+            className="min-h-11 shrink-0 rounded-lg px-2 text-sm font-bold text-morron underline-offset-4 hover:underline"
           >
             Borrar todo
           </button>
@@ -58,45 +52,32 @@ export function EventHistoryList({ refreshKey = 0 }: EventHistoryListProps) {
       </div>
 
       {events.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-stone-200 bg-white/70 p-4 text-center">
-          <p className="text-sm font-medium text-stone-700">
-            Todavía no hay eventos cerrados.
-          </p>
-          <p className="mt-1 text-sm text-stone-500">
-            Cuando cierres una cuenta, podés guardarla acá.
+        <div className="rounded-[1.25rem] border-2 border-dashed border-ink/30 bg-white/50 p-5 text-center">
+          <p className="font-bold">Todavía no cerraste ninguna cuenta.</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Cuando termines un cálculo, guardalo y aparece acá.
           </p>
         </div>
       ) : isConfirmingClear ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-          <p className="text-sm font-semibold text-red-800">
-            ¿Borrar todo el historial?
-          </p>
-          <p className="mt-1 text-xs text-red-700">
-            Esto no borra el evento que estés editando.
-          </p>
+        <div role="alert" className="rounded-xl border-2 border-morron bg-morron-soft p-4">
+          <p className="font-bold text-morron">¿Borrar todo el historial?</p>
+          <p className="text-sm text-morron">No toca la cuenta que estás editando.</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              fullWidth
-              onClick={() => setIsConfirmingClear(false)}
-            >
+            <Button variant="secondary" size="sm" onClick={() => setIsConfirmingClear(false)}>
               Cancelar
             </Button>
-            <Button variant="danger" size="sm" fullWidth onClick={handleClearAll}>
+            <Button variant="danger" size="sm" onClick={handleClearAll}>
               Borrar historial
             </Button>
           </div>
         </div>
       ) : (
-        events.map((event) => (
-          <EventHistoryCard
-            key={event.id}
-            event={event}
-            onDelete={handleDelete}
-          />
-        ))
+        <ul className="flex flex-col gap-3">
+          {events.map((event) => (
+            <EventHistoryCard key={event.id} event={event} onDelete={handleDelete} />
+          ))}
+        </ul>
       )}
     </section>
   );
-}
+});

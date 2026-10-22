@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import type { Family, SingleMemberType } from "@/types/family";
-import { isSingleMinor } from "@/lib/calculations/eligibility";
+import { memo, useState, type FormEvent } from "react";
+import type { Family } from "@/types/family";
+import {
+  MEMBER_OPTIONS,
+  emptyFamilyFormValues,
+  familyToFormValues,
+  isFamilyAmountLocked,
+  parseFamilyForm,
+  type FamilyFormValues,
+} from "@/lib/forms/familyForm";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PlusIcon } from "@/components/ui/icons";
 import { SingleMemberTypeSelector } from "./SingleMemberTypeSelector";
 
 interface FamilyFormProps {
@@ -16,176 +24,150 @@ interface FamilyFormProps {
   onCancel?: () => void;
 }
 
-const memberOptions = [1, 2, 3, 4, 5];
-
-export function FamilyForm({
+export const FamilyForm = memo(function FamilyForm({
   initialFamily,
   submitLabel = "Agregar familia",
-  title = "Agregar familia",
+  title = "Sumá una familia",
   onSubmit,
   onCancel,
 }: FamilyFormProps) {
-  const [name, setName] = useState(initialFamily?.name ?? "");
-  const [members, setMembers] = useState(initialFamily?.members ?? 2);
-  const [singleMemberType, setSingleMemberType] = useState<SingleMemberType>(
-    initialFamily?.singleMemberType ?? null
+  const [values, setValues] = useState<FamilyFormValues>(() =>
+    initialFamily ? familyToFormValues(initialFamily) : emptyFamilyFormValues()
   );
-  const [paidAmount, setPaidAmount] = useState(
-    initialFamily ? String(initialFamily.paidAmount) : ""
-  );
-  const [notes, setNotes] = useState(initialFamily?.notes ?? "");
   const [submitted, setSubmitted] = useState(false);
 
-  const parsedAmount = Number(paidAmount);
-  const isAmountLocked = isSingleMinor({ members, singleMemberType });
-  const nameError =
-    submitted && name.trim().length === 0 ? "Poné un nombre para identificarla." : "";
-  const typeError =
-    submitted && members === 1 && singleMemberType === null
-      ? "Indicá si es adulto o menor."
-      : "";
-  const amountError =
-    submitted &&
-    !isAmountLocked &&
-    (paidAmount.trim() === "" || Number.isNaN(parsedAmount) || parsedAmount < 0)
-      ? "Ingresá un monto válido. Puede ser 0."
-      : "";
-  const isValid =
-    name.trim().length > 0 &&
-    members >= 1 &&
-    members <= 5 &&
-    (members !== 1 || singleMemberType !== null) &&
-    (isAmountLocked ||
-      (paidAmount.trim() !== "" &&
-        !Number.isNaN(parsedAmount) &&
-        parsedAmount >= 0));
+  const result = parseFamilyForm(values);
+  const errors = submitted && !result.ok ? result.errors : {};
+  const amountLocked = isFamilyAmountLocked(values);
 
-  const resetForm = () => {
-    setName("");
-    setMembers(2);
-    setSingleMemberType(null);
-    setPaidAmount("");
-    setNotes("");
-    setSubmitted(false);
-  };
+  const update = <K extends keyof FamilyFormValues>(key: K, value: FamilyFormValues[K]) =>
+    setValues((current) => ({ ...current, [key]: value }));
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setSubmitted(true);
-    if (!isValid) return;
+    if (!result.ok) return;
 
-    onSubmit({
-      name: name.trim(),
-      members,
-      singleMemberType: members === 1 ? singleMemberType : null,
-      paidAmount: isAmountLocked ? 0 : parsedAmount,
-      notes: notes.trim() || undefined,
-    });
-
-    if (!initialFamily) resetForm();
+    onSubmit(result.family);
+    if (!initialFamily) {
+      setValues(emptyFamilyFormValues());
+      setSubmitted(false);
+    }
   };
 
   return (
-    <Card padding="md">
-      <div className="mb-4">
-        <h3 className="text-lg font-bold text-stone-900">{title}</h3>
-        {!initialFamily && (
-          <p className="mt-1 text-sm text-stone-500">
-            Cargá quién vino y cuánto pagó hasta ahora.
-          </p>
-        )}
-      </div>
+    <Card as="section" className={initialFamily ? "bg-mustard-soft" : ""}>
+      <h2 className="font-display text-2xl">{title}</h2>
+      {!initialFamily && (
+        <p className="mt-1 text-sm text-ink-soft">
+          Quién vino y cuánto puso hasta ahora.
+        </p>
+      )}
 
-      <div className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} noValidate className="mt-5 flex flex-col gap-5">
         <Input
           label="Nombre"
           placeholder="Ej: Los García"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          error={nameError}
+          value={values.name}
+          maxLength={40}
+          autoComplete="off"
+          onChange={(event) => update("name", event.target.value)}
+          error={errors.name}
         />
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-stone-700">
-            Integrantes
-          </label>
+        <fieldset>
+          <legend className="mb-2 text-sm font-bold">Integrantes</legend>
           <div className="grid grid-cols-5 gap-2">
-            {memberOptions.map((number) => (
-              <button
-                key={number}
-                type="button"
-                onClick={() => {
-                  setMembers(number);
-                  if (number !== 1) setSingleMemberType(null);
-                }}
-                aria-pressed={members === number}
-                className={[
-                  "min-h-12 rounded-lg border text-base font-bold transition-all focus:outline-none focus:ring-2 focus:ring-orange-400",
-                  members === number
-                    ? "border-orange-500 bg-orange-50 text-orange-800"
-                    : "border-stone-200 bg-white text-stone-600 hover:border-orange-200",
-                ].join(" ")}
-              >
-                {number}
-              </button>
-            ))}
+            {MEMBER_OPTIONS.map((number) => {
+              const isSelected = values.members === number;
+              return (
+                <button
+                  key={number}
+                  type="button"
+                  aria-pressed={isSelected}
+                  aria-label={number === 1 ? "1 integrante" : `${number} integrantes`}
+                  onClick={() =>
+                    setValues((current) => ({
+                      ...current,
+                      members: number,
+                      singleMemberType: number === 1 ? current.singleMemberType : null,
+                    }))
+                  }
+                  className={[
+                    "flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border-2 border-ink font-mono text-lg font-black transition-all",
+                    isSelected
+                      ? "bg-ink text-paper shadow-[3px_3px_0_0_var(--color-ember)]"
+                      : "bg-white hover:bg-paper",
+                  ].join(" ")}
+                >
+                  {number}
+                  <span aria-hidden="true" className="flex gap-0.5">
+                    {Array.from({ length: number }, (_, i) => (
+                      <span
+                        key={i}
+                        className={`h-1.5 w-1.5 rounded-full ${isSelected ? "bg-ember" : "bg-ink/40"}`}
+                      />
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </div>
+        </fieldset>
 
-        {members === 1 && (
+        {values.members === 1 && (
           <div>
             <SingleMemberTypeSelector
-              value={singleMemberType}
-              onChange={setSingleMemberType}
+              value={values.singleMemberType}
+              onChange={(type) => update("singleMemberType", type)}
             />
-            {typeError && (
-              <p className="mt-2 text-xs font-medium text-red-700">
-                {typeError}
-              </p>
+            {errors.singleMemberType && (
+              <p className="mt-2 text-sm font-bold text-morron">{errors.singleMemberType}</p>
             )}
           </div>
         )}
 
         <Input
           label="Monto pagado"
-          type="number"
-          min={0}
-          step={0.01}
+          type="text"
           inputMode="decimal"
+          prefix="$"
           placeholder="0"
-          value={isAmountLocked ? "0" : paidAmount}
-          onChange={(e) => setPaidAmount(e.target.value)}
-          disabled={isAmountLocked}
-          hint={
-            isAmountLocked
-              ? "Un menor solo no aporta, así que el monto queda en $0."
-              : "Ingresá 0 si no puso nada."
+          autoComplete="off"
+          value={amountLocked ? "0" : values.paidAmount}
+          onChange={(event) =>
+            update("paidAmount", event.target.value.replace(/[^\d.,]/g, ""))
           }
-          error={amountError}
+          disabled={amountLocked}
+          hint={
+            amountLocked
+              ? "Un menor solo no aporta, así que el monto queda en $0."
+              : "Poné 0 si no puso nada."
+          }
+          error={errors.paidAmount}
         />
 
         <Input
-          label="Nota o detalle"
-          placeholder="Ej: bebida, pan, hielo"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          label="Nota o detalle (opcional)"
+          placeholder="Ej: carne, hielo, pan"
+          value={values.notes}
+          maxLength={80}
+          autoComplete="off"
+          onChange={(event) => update("notes", event.target.value)}
         />
 
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className={`grid gap-2 ${onCancel ? "grid-cols-2" : ""}`}>
           {onCancel && (
             <Button variant="secondary" fullWidth onClick={onCancel}>
               Cancelar
             </Button>
           )}
-          <Button
-            fullWidth
-            onClick={handleSubmit}
-            disabled={!isValid}
-            className={onCancel ? "" : "sm:col-span-2"}
-          >
+          <Button type="submit" fullWidth size={onCancel ? "md" : "lg"}>
+            {!initialFamily && <PlusIcon />}
             {submitLabel}
           </Button>
         </div>
-      </div>
+      </form>
     </Card>
   );
-}
+});
