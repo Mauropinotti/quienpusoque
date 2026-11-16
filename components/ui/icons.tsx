@@ -43,6 +43,12 @@ export const PlusIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const MinusIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M5 12h14" />
+  </Icon>
+);
+
 export const PencilIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" />
@@ -71,6 +77,12 @@ export const CopyIcon = (p: IconProps) => (
 export const DownloadIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+  </Icon>
+);
+
+export const UploadIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 16V5M7 10l5-5 5 5M5 20h14" />
   </Icon>
 );
 

@@ -14,6 +14,8 @@ interface FamilyListProps {
   onRemove: (id: string) => void;
   onUpdate: (family: Family) => void;
   onCalculate: () => void;
+  /** Acción a la derecha del título, por ejemplo exportar el cálculo. */
+  headerAction?: React.ReactNode;
 }
 
 function Notice({ title, children }: { title: string; children: React.ReactNode }) {
@@ -32,12 +34,13 @@ export function FamilyList({
   onRemove,
   onUpdate,
   onCalculate,
+  headerAction,
 }: FamilyListProps) {
   const { familyCount, eligibleFamilyCount, totalPaid, canCalculate } = insights;
 
   return (
     <section aria-labelledby="family-list-title" className="flex flex-col gap-3">
-      <div className="flex items-end justify-between gap-3 pt-2">
+      <div className="flex flex-wrap items-end justify-between gap-3 pt-2">
         <div>
           <h2 id="family-list-title" className="font-display text-3xl">
             En la mesa
@@ -46,6 +49,7 @@ export function FamilyList({
             {familyCount === 1 ? "1 familia" : `${familyCount} familias`}
           </p>
         </div>
+        {familyCount > 0 && headerAction}
       </div>
 
       {familyCount === 0 && (

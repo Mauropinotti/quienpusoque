@@ -1,13 +1,25 @@
 import type { Family, FamilyWithEligibility } from "@/types/family";
 import type { ValidationError } from "@/types/calculation";
 
-// ── Single minor ──────────────────────────────────────────────────────────────
+/** Tope por familia o grupo, para adultos y para menores por separado. */
+export const MAX_PEOPLE_PER_KIND = 20;
 
-/** Una familia de 1 menor no aporta: no paga y no carga monto pagado. */
-export function isSingleMinor(
-  family: Pick<Family, "members" | "singleMemberType">
-): boolean {
-  return family.members === 1 && family.singleMemberType === "minor";
+type Composition = Pick<Family, "adults" | "minors">;
+
+export function getPeopleCount(family: Composition): number {
+  return family.adults + family.minors;
+}
+
+/**
+ * Una familia sin adultos no aporta: no paga, no cobra y no carga monto.
+ * Sus menores no entran en la cuenta. Es la regla del antiguo "menor solo".
+ */
+export function isGuestFamily(family: Composition): boolean {
+  return family.adults === 0;
+}
+
+function isValidCount(value: number): boolean {
+  return Number.isInteger(value) && value >= 0 && value <= MAX_PEOPLE_PER_KIND;
 }
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -15,14 +27,10 @@ export function isSingleMinor(
 export function validateFamily(family: Family): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  if (
-    !Number.isInteger(family.members) ||
-    family.members < 1 ||
-    family.members > 5
-  ) {
+  if (!isValidCount(family.adults) || !isValidCount(family.minors) || getPeopleCount(family) < 1) {
     errors.push({
       code: "MEMBERS_OUT_OF_RANGE",
-      message: `"${family.name}": la cantidad de integrantes debe ser un número entero entre 1 y 5.`,
+      message: `"${family.name}": tiene que haber al menos una persona, con hasta ${MAX_PEOPLE_PER_KIND} adultos y ${MAX_PEOPLE_PER_KIND} menores.`,
       familyId: family.id,
     });
   }
@@ -35,18 +43,10 @@ export function validateFamily(family: Family): ValidationError[] {
     });
   }
 
-  if (family.members === 1 && family.singleMemberType === null) {
-    errors.push({
-      code: "MISSING_SINGLE_MEMBER_TYPE",
-      message: `"${family.name}": una familia de 1 integrante debe indicar si es adulto o menor.`,
-      familyId: family.id,
-    });
-  }
-
-  if (isSingleMinor(family) && family.paidAmount > 0) {
+  if (isGuestFamily(family) && family.paidAmount > 0) {
     errors.push({
       code: "GUEST_PAID_AMOUNT",
-      message: `"${family.name}": una familia de 1 menor no aporta, así que su monto pagado debe ser 0.`,
+      message: `"${family.name}": una familia sin adultos no aporta, así que su monto pagado debe ser 0.`,
       familyId: family.id,
     });
   }
@@ -62,23 +62,15 @@ export function validateFamilies(families: Family[]): ValidationError[] {
 
 /**
  * Reglas:
- * - 1 adulto  → isEligibleToPay: true,  eligiblePersons: 1
- * - 1 menor   → isEligibleToPay: false, eligiblePersons: 0
- * - 2 o más   → isEligibleToPay: true,  eligiblePersons: members
+ * - con al menos 1 adulto → aporta; entran en la cuenta sus adultos y menores
+ * - sin adultos           → no aporta (invitada); nadie de la familia entra
  */
 export function computeEligibility(family: Family): FamilyWithEligibility {
-  if (family.members === 1) {
-    const isAdult = family.singleMemberType === "adult";
-    return {
-      ...family,
-      isEligibleToPay: isAdult,
-      eligiblePersons: isAdult ? 1 : 0,
-    };
-  }
+  const isEligibleToPay = !isGuestFamily(family);
   return {
     ...family,
-    isEligibleToPay: true,
-    eligiblePersons: family.members,
+    isEligibleToPay,
+    eligiblePersons: isEligibleToPay ? getPeopleCount(family) : 0,
   };
 }
 

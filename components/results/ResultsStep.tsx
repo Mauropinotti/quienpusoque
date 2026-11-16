@@ -1,10 +1,12 @@
 "use client";
 
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import type { Family } from "@/types/family";
 import type { EventTicketPdfData, EventTicketPhoto } from "@/types/pdf";
 import type { SplitRecommendation } from "@/types/recommendation";
 import type { Settlement } from "@/lib/flow/eventInsights";
+import { buildFamilyTicketDetails } from "@/lib/flow/ticketDetails";
+import { formatMoney } from "@/lib/formatting/formatCurrency";
 import { formatMediumDateTime } from "@/lib/formatting/formatDate";
 import { generateWhatsappText } from "@/lib/text/generateWhatsappText";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +30,8 @@ interface ResultsStepProps {
   onSaveClosedEvent: () => void;
   onEditFamilies: () => void;
   onReset: () => void;
+  /** Botón para bajar el cálculo y retomarlo después. */
+  exportAction?: React.ReactNode;
 }
 
 // El ticket solo se vuelve a dibujar si cambia el cálculo, no al guardar en el
@@ -48,9 +52,17 @@ export function ResultsStep({
   onSaveClosedEvent,
   onEditFamilies,
   onReset,
+  exportAction,
 }: ResultsStepProps) {
   const [dateLabel] = useState(() => formatMediumDateTime(new Date()));
   const [isConfirmingReset, setIsConfirmingReset] = useState(false);
+  const details = useMemo(
+    () =>
+      buildFamilyTicketDetails(families, settlement.breakdown, (amount) =>
+        formatMoney(amount, currency)
+      ),
+    [currency, families, settlement.breakdown]
+  );
 
   const getWhatsappText = useCallback(
     () =>
@@ -58,10 +70,12 @@ export function ResultsStep({
         eventName,
         currency,
         splitMode: settlement.splitMode,
+        families,
+        breakdown: settlement.breakdown,
         balances: settlement.balances,
         transfers: settlement.transfers,
       }),
-    [currency, eventName, settlement]
+    [currency, eventName, families, settlement]
   );
 
   const getPdfData = useCallback(
@@ -74,6 +88,7 @@ export function ResultsStep({
       families,
       balances: settlement.balances,
       transfers: settlement.transfers,
+      breakdown: settlement.breakdown,
       recommendation,
       photo: ticketPhoto,
     }),
@@ -103,6 +118,7 @@ export function ResultsStep({
           eventName={eventName}
           currency={currency}
           settlement={settlement}
+          details={details}
           variant="full"
           dateLabel={dateLabel}
         />
@@ -116,6 +132,7 @@ export function ResultsStep({
         <CopyResultButton getText={getWhatsappText} />
         <ExportPdfButton getData={getPdfData} />
         <EventPhotoUploader photo={ticketPhoto} onPhotoChange={onTicketPhotoChange} />
+        {exportAction}
 
         <Button
           variant={isSavedToHistory ? "ink" : "secondary"}

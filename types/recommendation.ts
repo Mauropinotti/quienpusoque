@@ -1,4 +1,4 @@
-import type { SplitMode } from "./family";
+import type { SplitBasis } from "./family";
 
 export type RecommendationConfidence = "low" | "medium" | "high";
 
@@ -13,7 +13,8 @@ export interface RecommendationMetrics {
 }
 
 export interface SplitRecommendation {
-  recommendedMode: SplitMode;
+  /** La recomendación elige la base; cuánto pagan los menores lo decide el grupo. */
+  recommendedMode: SplitBasis;
   confidence: RecommendationConfidence;
   reasons: string[];
   metrics: RecommendationMetrics;

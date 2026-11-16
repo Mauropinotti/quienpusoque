@@ -22,3 +22,25 @@ export interface ClosedEvent {
   recommendationSnapshot: SplitRecommendation | null;
   optionalNote?: string;
 }
+
+/** Cálculo en curso, tal como se exporta a un archivo para retomarlo después. */
+export interface EventSnapshot {
+  eventName: string;
+  currency: string;
+  createdAt: string;
+  /** Criterio confirmado (null si todavía no se eligió). */
+  splitMode: SplitMode | null;
+  /** Criterio marcado en pantalla, aunque no esté confirmado. */
+  selectedMode: SplitMode;
+  recommendationAccepted: boolean | null;
+  families: Family[];
+}
+
+/** Archivo `.json` que baja "Exportar cálculo" y lee "Importar cálculo". */
+export interface EventExportFile {
+  format: "quien-puso-que/calculo";
+  /** 2: familias con adultos y menores. 1: con integrantes (se sigue leyendo). */
+  version: 2;
+  exportedAt: string;
+  event: EventSnapshot;
+}

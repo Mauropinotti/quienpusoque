@@ -1,7 +1,8 @@
-import type { EventData } from "@/types/event";
-import type { Family, SplitMode } from "@/types/family";
+import type { EventData, EventSnapshot } from "@/types/event";
+import type { Family, SplitBasis, SplitMode } from "@/types/family";
 import type { EventTicketPhoto } from "@/types/pdf";
 import type { LocalEventDraft } from "@/lib/storage/localEventStorage";
+import { getSplitBasis, isPersonSplitMode } from "@/lib/calculations/splitModes";
 import { DEMO_EVENT_NAME, DEMO_FAMILIES } from "./demoEvent";
 
 /**
@@ -38,13 +39,15 @@ export type EventFlowAction =
   | { type: "family-added"; family: Family }
   | { type: "family-updated"; family: Family }
   | { type: "family-removed"; id: string }
-  | { type: "recommendation-opened"; recommendedMode: SplitMode }
+  | { type: "recommendation-opened"; recommendedMode: SplitBasis }
   | { type: "mode-selected"; mode: SplitMode }
-  | { type: "mode-confirmed"; recommendedMode: SplitMode | null }
+  | { type: "mode-confirmed"; recommendedMode: SplitBasis | null }
   | { type: "closed-event-saved"; id: string }
   | { type: "closed-event-save-failed"; message: string }
   | { type: "ticket-photo-changed"; photo: EventTicketPhoto | null }
   | { type: "demo-loaded"; now: string }
+  /** Cálculo leído de un archivo exportado (ya validado en lib/exchange). */
+  | { type: "event-imported"; event: EventSnapshot }
   | { type: "reset"; now: string };
 
 export const EMPTY_EVENT_DATA: EventData = {
@@ -73,21 +76,38 @@ export function getStepFromDraft(draft: LocalEventDraft): FlowStep {
   return "setup";
 }
 
+function createFlowStateFromSnapshot(
+  snapshot: EventSnapshot,
+  step: FlowStep
+): EventFlowState {
+  return {
+    ...createEmptyFlowState(snapshot.createdAt),
+    step,
+    eventData: {
+      eventName: snapshot.eventName,
+      currency: snapshot.currency,
+      splitMode: snapshot.splitMode,
+      families: snapshot.families,
+    },
+    selectedMode: snapshot.selectedMode,
+    recommendationAccepted: snapshot.recommendationAccepted,
+  };
+}
+
 export function createFlowStateFromDraft(
   draft: LocalEventDraft
 ): EventFlowState {
-  return {
-    ...createEmptyFlowState(draft.createdAt),
-    step: getStepFromDraft(draft),
-    eventData: {
-      eventName: draft.eventName,
-      currency: draft.currency,
-      splitMode: draft.splitMode,
-      families: draft.families,
-    },
-    selectedMode: draft.selectedMode,
-    recommendationAccepted: draft.recommendationAccepted,
-  };
+  return createFlowStateFromSnapshot(draft, getStepFromDraft(draft));
+}
+
+/**
+ * Un cálculo importado se retoma en la carga de familias: ahí se ve todo lo
+ * que trajo el archivo y se puede seguir sumando gente o cosas.
+ */
+export function getStepFromImport(event: EventSnapshot): FlowStep {
+  return event.families.length > 0 || event.eventName.trim() !== ""
+    ? "families"
+    : "setup";
 }
 
 export function createDemoFlowState(now: string): EventFlowState {
@@ -154,7 +174,12 @@ export function eventFlowReducer(
       return {
         ...state,
         step: "recommendation",
-        selectedMode: action.recommendedMode,
+        // Si sugiere por persona y ya habían elegido cómo pagan los menores,
+        // se respeta esa elección.
+        selectedMode:
+          action.recommendedMode === "by-person" && isPersonSplitMode(state.selectedMode)
+            ? state.selectedMode
+            : action.recommendedMode,
         recommendationAccepted: null,
       };
 
@@ -171,8 +196,10 @@ export function eventFlowReducer(
         ...state,
         step: "results",
         eventData: { ...state.eventData, splitMode: state.selectedMode },
+        // Se acepta la sugerencia si coincide la base (familia o persona):
+        // cuánto pagan los menores es una decisión aparte del grupo.
         recommendationAccepted: action.recommendedMode
-          ? state.selectedMode === action.recommendedMode
+          ? getSplitBasis(state.selectedMode) === action.recommendedMode
           : null,
         savedClosedEventId: null,
         historySaveError: "",
@@ -198,6 +225,9 @@ export function eventFlowReducer(
         eventData: { ...demo.eventData, currency: state.eventData.currency },
       };
     }
+
+    case "event-imported":
+      return createFlowStateFromSnapshot(action.event, getStepFromImport(action.event));
 
     case "reset":
       return createEmptyFlowState(action.now);

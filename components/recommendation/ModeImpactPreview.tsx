@@ -4,16 +4,20 @@ import { formatPercentage } from "@/lib/formatting/formatPercentage";
 
 interface ModeImpactPreviewProps {
   metrics: RecommendationMetrics;
+  adultCount: number;
+  minorCount: number;
 }
 
 export const ModeImpactPreview = memo(function ModeImpactPreview({
   metrics,
+  adultCount,
+  minorCount,
 }: ModeImpactPreviewProps) {
   return (
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       <MetricBox label="Familias que aportan" value={String(metrics.eligibleFamilies)} />
-      <MetricBox label="Personas que aportan" value={String(metrics.eligiblePersons)} />
-      <MetricBox label="Promedio por familia" value={metrics.averageFamilySize.toFixed(1)} />
+      <MetricBox label="Adultos" value={String(adultCount)} />
+      <MetricBox label="Menores" value={String(minorCount)} />
       <MetricBox
         label="Diferencia entre criterios"
         value={formatPercentage(metrics.averageImpactBetweenModes)}

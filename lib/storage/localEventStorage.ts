@@ -1,13 +1,18 @@
 import type { EventData } from "@/types/event";
 import type { Family, SplitMode } from "@/types/family";
-import { isSingleMinor } from "@/lib/calculations/eligibility";
 import {
   getBrowserStorage,
   readStorageJson,
   removeStorageKey,
   writeStorageString,
 } from "./browserStorage";
-import { isRecord, isSplitMode, isValidFamily } from "./validators";
+import {
+  isRecord,
+  isSplitMode,
+  isValidFamily,
+  normalizeFamily,
+  type StoredFamily,
+} from "./validators";
 
 export const CURRENT_DRAFT_STORAGE_KEY = "quien-puso-que:current-draft";
 
@@ -74,10 +79,10 @@ function parseDraft(value: unknown): LocalEventDraft | null {
     eventName,
     currency,
     createdAt: typeof createdAt === "string" ? createdAt : updatedAt,
-    // Borradores anteriores a la regla pueden traer monto cargado en un menor solo.
-    families: (families as Family[]).map((family) =>
-      isSingleMinor(family) ? { ...family, paidAmount: 0 } : family
-    ),
+    // Borradores viejos pueden traer integrantes sin distinguir adultos de
+    // menores, monto en una familia sin adultos o la nota libre previa al
+    // desglose: normalizeFamily los pone al día.
+    families: (families as StoredFamily[]).map(normalizeFamily),
     selectedMode,
     splitMode,
     recommendationAccepted,

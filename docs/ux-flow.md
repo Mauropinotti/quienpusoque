@@ -31,6 +31,10 @@ Objetivo: explicar en segundos qué hace la app y llevar al cálculo.
 - Link secundario **Ver un asado de ejemplo** → `/calcular?demo=1`.
 - Ticket de muestra calculado en build con el motor real (no es una imagen).
 - Cinta animada, "Tres pasos y a la sobremesa" y bloque de privacidad.
+- **Progreso** (`#versiones`): la versión actual ("Quienpusoque V1.2") con sus
+  novedades y el historial de versiones. Se llega desde el aviso "Nuevo ·
+  Quienpusoque V1.2" del inicio, el menú (`Novedades`) y el pie, que muestra
+  la versión en todas las páginas. Los datos salen de `lib/releases.ts`.
 
 ## Arranque de la calculadora
 
@@ -54,6 +58,8 @@ Objetivo: crear el evento.
 - Sugerencias rápidas: Asado del sábado, Cumple, Escapada, Cena de fin de año.
 - Botón `Cargar familias` (deshabilitado sin nombre).
 - Tarjeta `Probar con datos de ejemplo`.
+- Tarjeta `¿Tenés un cálculo guardado?` con `Importar cálculo`: carga un
+  archivo exportado antes y retoma la cuenta (ver "Exportar e importar").
 - Si hay borrador: aviso y `Empezar de nuevo`.
 - Historial de cuentas cerradas debajo.
 
@@ -64,18 +70,27 @@ Objetivo: cargar y mantener la lista de participantes.
 Formulario `Sumá una familia`:
 
 - nombre
-- integrantes del 1 al 5 (botones con puntitos)
-- selector Adulto/Menor si tiene 1 integrante
-- monto pagado con prefijo `$` (bloqueado en $0 si es 1 menor); acepta coma o punto decimal
-- nota o detalle opcional
-- los errores aparecen al intentar agregar, no mientras se tipea
+- **¿Quiénes vienen?**: dos contadores − / + para `Adultos` y `Menores`
+  (0 a 20 cada uno, al menos una persona). Por defecto, 2 adultos.
+- sin adultos: aviso de que la familia no aporta y sus menores no entran
+- **¿Qué puso?**: una fila por cosa, con `Qué puso` y `Cuánto salió` (prefijo
+  `$`, acepta coma o punto decimal). `Sumar otra cosa` agrega una fila (hasta
+  12) y lleva el foco a ella; el tacho la quita.
+- `Total que puso` se calcula en vivo con la suma de las filas: el usuario no
+  lo tipea.
+- sin adultos: en lugar de las filas, `Monto pagado` bloqueado en $0.
+- en el celular cada fila ocupa dos renglones (qué / cuánto); desde `sm`, uno
+- los errores aparecen al intentar agregar, no mientras se tipea; una cosa sin
+  monto se marca en su propia fila
 
 La validación vive en `lib/forms/familyForm.ts`.
 
 Lista `En la mesa`:
 
-- tarjeta por familia con avatar, integrantes, nota y monto
-- badge `No aporta` para menor solo
+- tarjeta por familia con avatar, "2 adultos y 1 menor" (puntos llenos y
+  puntos mostaza), total y, debajo, cada cosa con su monto
+- `Exportar cálculo` junto al título (si hay al menos una familia)
+- badge `No aporta` para familias sin adultos
 - edición inline y eliminación con confirmación
 - avisos si no hay gasto o falta una familia que aporte
 
@@ -89,28 +104,44 @@ Objetivo: explicar el criterio sugerido y permitir decisión manual.
 - Tarjeta "Nuestra sugerencia" con el criterio, medidor de confianza y razones.
 - Selector `Por familia` / `Por persona` con radios nativos (flechas del
   teclado y lectores de pantalla funcionan sin código extra).
-- Tabla **Así le toca a cada uno**: lo que pondría cada familia con cada
-  criterio, resaltando el elegido.
-- Métricas del grupo.
+- Si se elige `Por persona` y hay menores en las familias que aportan, aparece
+  **¿Cómo pagan los menores?** con tres radios, cada uno con lo que pagaría un
+  adulto y un menor:
+  - `Igual que los adultos (100%)`: todos pagan una parte igual.
+  - `La mitad (50%)`: cada menor paga la mitad de la parte por persona; lo que
+    no pagan se reparte en partes iguales entre los adultos.
+  - `No pagan (0%)`: el total se divide solo entre los adultos.
+  Sin menores no se pregunta (las tres dan lo mismo). La respuesta se recuerda
+  aunque pasen un rato por `Por familia`.
+- Tabla **Así le toca a cada uno**: lo que pondría cada familia por familia y
+  por persona (con la regla de menores elegida, indicada en el encabezado),
+  resaltando el elegido.
+- Métricas del grupo: familias que aportan, adultos, menores y diferencia
+  entre criterios.
 - Botón fijo `Ver resultado`.
 
 Reglas:
 
 - al entrar al paso, la app selecciona el modo recomendado
 - si el usuario cambia el modo, se marca que la recomendación no quedó aceptada todavía
-- al confirmar, se guarda si el modo elegido coincide con la recomendación
+- al confirmar, se guarda si la base elegida (por familia / por persona)
+  coincide con la recomendación; cuánto pagan los menores no cuenta
 
 ## 4. Results
 
 Objetivo: cerrar la cuenta.
 
 - Título `¡Cuenta cerrada!`.
-- El ticket: balances por familia con su estado, total, criterio con cuota
-  unitaria y **Quién le pasa a quién** con las transferencias numeradas.
+- El ticket: por familia, nombre, estado y balance; debajo, "2 adultos y 1
+  menor", cada cosa que puso con su monto, "puso · le tocaba" y la cuenta
+  ("= 2 adultos × $1.750 + 1 menor × $750"). Después el total, el criterio con
+  la parte unitaria, **Cómo se repartió** (los pasos del cálculo) y **Quién le
+  pasa a quién** con las transferencias numeradas.
 - Bloque `Compartir y cerrar`:
   - `Copiar resumen para WhatsApp`
   - `Descargar ticket PDF`
   - foto opcional del evento
+  - `Exportar cálculo`
   - `Guardar en el historial`
 - `Editar familias` y `Nuevo evento` (este último pide confirmación).
 
@@ -122,6 +153,11 @@ Badges:
 - `No aporta`
 
 ## Copiar para WhatsApp
+
+El resumen incluye el criterio, **Cómo se calculó** (los mismos pasos del
+ticket), **Lo que puso cada uno** (cada familia con su total y cada cosa con
+su monto; una sola cosa va en la misma línea), **Le toca a cada familia** (la
+cuenta de cada una, en los criterios por persona) y las familias sin adultos.
 
 El botón usa `navigator.clipboard` cuando está disponible.
 
@@ -140,6 +176,56 @@ La foto:
 - no se persiste en el borrador
 
 El PDF se genera con datos estructurados del cálculo, no capturando la pantalla. Si no hay foto, se genera igual. Ver `docs/pdf-ticket.md`.
+
+## Exportar e importar
+
+Para seguir una cuenta otro día o en otro dispositivo, sin servidor.
+
+- `Exportar cálculo` (paso 2, junto a `En la mesa`, y en `Compartir y
+  cerrar`) baja `quien-puso-que-{evento}-{yyyy-mm-dd}.json` con el estado en
+  curso: nombre, moneda, familias con su desglose, criterio elegido y
+  confirmado, y fecha de creación. No incluye la foto ni el historial.
+- `Importar cálculo` (paso 1) lee ese archivo. Si ya hay una cuenta en curso,
+  pide confirmación antes de reemplazarla. Lo importado se retoma en la carga
+  de familias y pasa a ser el borrador.
+- Todo el archivo se valida antes de tocar el estado (`lib/exchange/eventFile.ts`):
+  formato y versión, moneda, fechas, familias, ids únicos y desglose. Los
+  totales se recalculan desde el desglose. Si algo no cierra, no se carga nada
+  y se explica por qué.
+- La versión 2 guarda adultos y menores. Los archivos de la versión 1 (con
+  integrantes) se siguen importando: cada familia pasa a adultos y menores con
+  la misma regla que los borradores viejos (ver `docs/calculation-model.md`).
+
+Formato:
+
+```json
+{
+  "format": "quien-puso-que/calculo",
+  "version": 2,
+  "exportedAt": "2026-11-16T15:00:00.000Z",
+  "event": {
+    "eventName": "Asado del sábado",
+    "currency": "ARS",
+    "createdAt": "2026-11-16T14:30:00.000Z",
+    "splitMode": null,
+    "selectedMode": "by-family",
+    "recommendationAccepted": null,
+    "families": [
+      {
+        "id": "demo-garcia",
+        "name": "Los García",
+        "adults": 2,
+        "minors": 2,
+        "paidAmount": 8000,
+        "items": [
+          { "description": "Carne", "amount": 6500 },
+          { "description": "Carbón", "amount": 1500 }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ## Persistencia local del borrador
 
@@ -221,7 +307,8 @@ Si `localStorage` está vacío, se muestra un estado vacío y el flujo principal
 - El historial solo existe en el navegador actual.
 - El PDF se descarga localmente; no hay almacenamiento remoto.
 - La foto del PDF no se guarda para futuras sesiones.
-- No hay sincronización entre dispositivos.
+- No hay sincronización entre dispositivos: para pasar una cuenta de un
+  celular a otro se exporta el archivo y se importa en el otro.
 - No hay modo offline formal, aunque el borrador local ayuda si la página ya cargó.
 
 ## Ayuda para usuarios
@@ -230,8 +317,9 @@ La página `/ayuda` explica:
 
 - qué hace la app
 - cómo crear un evento
-- cómo cargar familias
-- reglas para adulto / menor
+- cómo cargar familias y lo que puso cada una
+- cómo exportar e importar un cálculo
+- adultos y menores, y cómo pagan los menores (100%, 50% o 0%)
 - quién paga y quién no paga
 - diferencia entre reparto por familia y por persona
 - balances, cobros, pagos y transferencias

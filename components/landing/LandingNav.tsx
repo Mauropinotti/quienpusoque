@@ -15,6 +15,12 @@ export function LandingNav() {
         >
           Cómo funciona
         </a>
+        <a
+          href="#versiones"
+          className="hidden rounded-lg px-3 py-2 font-bold underline-offset-4 hover:underline lg:inline-block"
+        >
+          Novedades
+        </a>
         <Link
           href="/ayuda"
           prefetch={false}

@@ -7,6 +7,7 @@ import type {
   ValidationError,
 } from "@/types/calculation";
 import { computeAllEligibility, validateFamilies } from "./eligibility";
+import { calculateShareBreakdown, getFamilyShare } from "./calculateShareBreakdown";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ function deriveStatus(
  * Casos borde manejados:
  * - splitMode null        → error NULL_SPLIT_MODE
  * - sin familias          → error NO_FAMILIES
- * - datos inválidos       → errores por familia (montos negativos, integrantes fuera de rango, etc.)
+ * - datos inválidos       → errores por familia (montos negativos, sin personas, etc.)
  * - sin elegibles         → error NO_ELIGIBLE_FAMILIES
  * - gasto total cero      → todos los balances son 0, no es un error
  */
@@ -58,7 +59,7 @@ export function calculateBalances(eventData: EventData): CalculationResult {
         {
           code: "NULL_SPLIT_MODE",
           message:
-            "Debe seleccionarse un modo de reparto (por familia o por persona) antes de calcular.",
+            "Debe seleccionarse un criterio de reparto (por familia o por persona) antes de calcular.",
         },
       ],
     };
@@ -110,31 +111,13 @@ export function calculateBalances(eventData: EventData): CalculationResult {
     0
   );
 
-  // ── 6. Calcular cuota esperada ────────────────────────────────────────────
-  function getExpectedShare(
-    isEligibleToPay: boolean,
-    eligiblePersons: number
-  ): number {
-    if (!isEligibleToPay) return 0;
-
-    // Gasto total cero: todos deben 0, todos en equilibrio.
-    if (totalAmount === 0) return 0;
-
-    if (splitMode === "by-family") {
-      return round2(totalAmount / eligibleFamilyCount);
-    }
-
-    // by-person: cuota proporcional a integrantes elegibles
-    if (eligiblePersonCount === 0) return 0;
-    return round2((totalAmount / eligiblePersonCount) * eligiblePersons);
-  }
+  // ── 6. Parte de cada uno según el criterio ─────────────────────────────
+  const breakdown = calculateShareBreakdown(withEligibility, totalAmount, splitMode);
 
   // ── 7. Construir balances ─────────────────────────────────────────────────
   const balances: FamilyBalance[] = withEligibility.map((family) => {
-    const expectedShare = getExpectedShare(
-      family.isEligibleToPay,
-      family.eligiblePersons
-    );
+    // Gasto total cero: todos deben 0, todos en equilibrio.
+    const expectedShare = totalAmount === 0 ? 0 : getFamilyShare(family, breakdown);
     const balance = round2(family.paidAmount - expectedShare);
     return {
       familyId: family.id,
@@ -155,6 +138,7 @@ export function calculateBalances(eventData: EventData): CalculationResult {
     eligiblePersonCount,
     splitMode,
     balances,
+    breakdown,
   };
 
   return { ok: true, data: output };

@@ -21,11 +21,12 @@
 
 Separación estricta entre lógica y UI:
 
-- `lib/calculations/`: funciones puras.
+- `lib/calculations/`: funciones puras (incluye la suma de lo que puso cada familia).
 - `lib/flow/`: reducer del flujo y derivados.
 - `lib/forms/`: validación de formularios.
 - `lib/image/`: preparación de la foto del ticket.
 - `lib/pdf/`: generación del ticket PDF.
+- `lib/exchange/`: exportar e importar el cálculo en curso como archivo `.json`.
 - `components/`: renderizado e interacción.
 - `components/help/`: ayuda visible para usuarios finales.
 - `types/`: contratos.
@@ -34,11 +35,13 @@ Separación estricta entre lógica y UI:
 
 ## Reglas de negocio
 
-- Familia de 1 adulto: paga.
-- Familia de 1 menor: no aporta.
-- Familia de 2 o más integrantes: paga.
+- Cada familia declara adultos y menores. Con al menos 1 adulto, aporta.
+- Familia sin adultos: no aporta y sus menores no cuentan.
 - `by-family`: divide el total entre familias habilitadas.
-- `by-person`: divide el total entre personas habilitadas.
+- `by-person`: divide el total entre adultos + menores, todos iguales.
+- `by-person-minors-half`: cada menor paga 50% de la parte por persona; lo que no pagan se reparte entre los adultos.
+- `by-person-minors-zero`: divide el total solo entre los adultos.
+- `paidAmount = suma de items[].amount`: el total lo calcula la app, no se tipea.
 - `balance = paidAmount - expectedShare`.
 - Las transferencias salen de `FamilyBalance[]`, no de familias crudas.
 
@@ -59,7 +62,7 @@ quien-puso-que:closed-events
 Reglas:
 
 - solo cliente
-- validar antes de restaurar
+- validar antes de restaurar (también los archivos importados)
 - tolerar errores y storage bloqueado
 - no guardar información sensible
 

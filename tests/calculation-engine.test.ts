@@ -28,10 +28,10 @@ function family(overrides: Partial<Family>): Family {
   return {
     id: overrides.id ?? "family-id",
     name: overrides.name ?? "Familia",
-    members: overrides.members ?? 2,
-    singleMemberType: overrides.singleMemberType ?? null,
+    adults: overrides.adults ?? 2,
+    minors: overrides.minors ?? 0,
     paidAmount: overrides.paidAmount ?? 0,
-    notes: overrides.notes,
+    ...(overrides.items ? { items: overrides.items } : {}),
   };
 }
 
@@ -77,33 +77,33 @@ const demoFamilies: Family[] = [
   family({
     id: "garcia",
     name: "Los García",
-    members: 4,
+    adults: 4,
     paidAmount: 8000,
   }),
   family({
     id: "rodriguez",
     name: "Los Rodríguez",
-    members: 2,
+    adults: 2,
     paidAmount: 3000,
   }),
   family({
     id: "lopez",
     name: "Los López",
-    members: 1,
-    singleMemberType: "adult",
+    adults: 1,
+    minors: 0,
     paidAmount: 0,
   }),
   family({
     id: "martinez",
     name: "Los Martínez",
-    members: 1,
-    singleMemberType: "minor",
+    adults: 0,
+    minors: 1,
     paidAmount: 0,
   }),
   family({
     id: "fernandez",
     name: "Los Fernández",
-    members: 3,
+    adults: 3,
     paidAmount: 5000,
   }),
 ];
@@ -115,7 +115,7 @@ afterEach(() => {
 describe("eligibility", () => {
   it("marca una familia de 1 adulto como aportante", () => {
     const result = computeEligibility(
-      family({ members: 1, singleMemberType: "adult" })
+      family({ adults: 1 })
     );
 
     expect(result.isEligibleToPay).toBe(true);
@@ -124,7 +124,7 @@ describe("eligibility", () => {
 
   it("marca una familia de 1 menor como no aportante", () => {
     const result = computeEligibility(
-      family({ members: 1, singleMemberType: "minor" })
+      family({ adults: 0, minors: 1 })
     );
 
     expect(result.isEligibleToPay).toBe(false);
@@ -132,7 +132,7 @@ describe("eligibility", () => {
   });
 
   it("marca una familia de 2 o más integrantes como aportante", () => {
-    const result = computeEligibility(family({ members: 4 }));
+    const result = computeEligibility(family({ adults: 4 }));
 
     expect(result.isEligibleToPay).toBe(true);
     expect(result.eligiblePersons).toBe(4);
@@ -141,8 +141,8 @@ describe("eligibility", () => {
   it("rechaza monto pagado en una familia de 1 menor", () => {
     const minor = family({
       id: "menor",
-      members: 1,
-      singleMemberType: "minor",
+      adults: 0,
+      minors: 1,
       paidAmount: 1000,
     });
 
@@ -160,10 +160,10 @@ describe("eligibility", () => {
 describe("calculateBalances", () => {
   it("reparte por familia con dos familias que pagaron y varias que no", () => {
     const families = [
-      family({ id: "a", name: "Familia A", members: 2, paidAmount: 10000 }),
-      family({ id: "b", name: "Familia B", members: 2, paidAmount: 5000 }),
-      family({ id: "c", name: "Familia C", members: 2, paidAmount: 0 }),
-      family({ id: "d", name: "Familia D", members: 2, paidAmount: 0 }),
+      family({ id: "a", name: "Familia A", adults: 2, paidAmount: 10000 }),
+      family({ id: "b", name: "Familia B", adults: 2, paidAmount: 5000 }),
+      family({ id: "c", name: "Familia C", adults: 2, paidAmount: 0 }),
+      family({ id: "d", name: "Familia D", adults: 2, paidAmount: 0 }),
     ];
     const result = calculateBalances(eventData(families, "by-family"));
     expectOk(result);
@@ -220,9 +220,9 @@ describe("calculateBalances", () => {
     const result = calculateBalances(
       eventData(
         [
-          family({ id: "a", name: "Familia A", members: 2, paidAmount: 0 }),
-          family({ id: "b", name: "Familia B", members: 1, singleMemberType: "adult", paidAmount: 0 }),
-          family({ id: "c", name: "Familia C", members: 1, singleMemberType: "minor", paidAmount: 0 }),
+          family({ id: "a", name: "Familia A", adults: 2, paidAmount: 0 }),
+          family({ id: "b", name: "Familia B", adults: 1, minors: 0, paidAmount: 0 }),
+          family({ id: "c", name: "Familia C", adults: 0, minors: 1, paidAmount: 0 }),
         ],
         "by-family"
       )
@@ -267,9 +267,9 @@ describe("recommendSplitMode", () => {
   it("sugiere reparto por persona cuando hay muchas familias de 1 adulto", () => {
     const recommendation = recommendSplitMode(
       computeAllEligibility([
-        family({ id: "a", name: "A", members: 1, singleMemberType: "adult", paidAmount: 1000 }),
-        family({ id: "b", name: "B", members: 1, singleMemberType: "adult", paidAmount: 1000 }),
-        family({ id: "c", name: "C", members: 3, paidAmount: 1000 }),
+        family({ id: "a", name: "A", adults: 1, minors: 0, paidAmount: 1000 }),
+        family({ id: "b", name: "B", adults: 1, minors: 0, paidAmount: 1000 }),
+        family({ id: "c", name: "C", adults: 3, paidAmount: 1000 }),
       ])
     );
 
@@ -279,10 +279,10 @@ describe("recommendSplitMode", () => {
   it("sugiere reparto por familia con tamaños similares", () => {
     const recommendation = recommendSplitMode(
       computeAllEligibility([
-        family({ id: "a", name: "A", members: 3, paidAmount: 3000 }),
-        family({ id: "b", name: "B", members: 3, paidAmount: 3000 }),
-        family({ id: "c", name: "C", members: 4, paidAmount: 3000 }),
-        family({ id: "d", name: "D", members: 4, paidAmount: 3000 }),
+        family({ id: "a", name: "A", adults: 3, paidAmount: 3000 }),
+        family({ id: "b", name: "B", adults: 3, paidAmount: 3000 }),
+        family({ id: "c", name: "C", adults: 4, paidAmount: 3000 }),
+        family({ id: "d", name: "D", adults: 4, paidAmount: 3000 }),
       ])
     );
 
@@ -291,9 +291,9 @@ describe("recommendSplitMode", () => {
 
   it("sugiere reparto por persona cuando el impacto económico es alto", () => {
     const families = computeAllEligibility([
-      family({ id: "a", name: "A", members: 1, singleMemberType: "adult", paidAmount: 5000 }),
-      family({ id: "b", name: "B", members: 1, singleMemberType: "adult", paidAmount: 0 }),
-      family({ id: "c", name: "C", members: 5, paidAmount: 5000 }),
+      family({ id: "a", name: "A", adults: 1, minors: 0, paidAmount: 5000 }),
+      family({ id: "b", name: "B", adults: 1, minors: 0, paidAmount: 0 }),
+      family({ id: "c", name: "C", adults: 5, paidAmount: 5000 }),
     ]);
 
     const impact = calculateModeImpact(families);
@@ -325,6 +325,8 @@ describe("generateWhatsappText", () => {
       eventName: "Asado del sábado",
       currency: "ARS",
       splitMode: "by-family",
+      families: demoFamilies,
+      breakdown: result.data.breakdown,
       balances: result.data.balances,
       transfers,
     });
@@ -332,7 +334,8 @@ describe("generateWhatsappText", () => {
     expect(text).toContain("Asado del sábado");
     expect(text).toContain("Gasto total:");
     expect(text).toContain("Transferencias sugeridas:");
-    expect(text).toContain("Invitados no aportantes:");
+    expect(text).toContain("No aportan (sin adultos):");
+    expect(text).toContain("Cómo se calculó:");
     expect(text).toContain("Calculado con ¿Quién puso qué?");
     expect(text).not.toMatch(/Ã|Â|�/);
   });

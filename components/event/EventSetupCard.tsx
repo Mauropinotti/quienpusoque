@@ -1,10 +1,12 @@
 "use client";
 
 import { memo, type FormEvent } from "react";
+import type { EventSnapshot } from "@/types/event";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ArrowRightIcon, FlameIcon } from "@/components/ui/icons";
+import { ImportEventCard } from "./ImportEventCard";
 
 interface EventSetupCardProps {
   eventName: string;
@@ -12,6 +14,7 @@ interface EventSetupCardProps {
   onEventNameChange: (name: string) => void;
   onNext: () => void;
   onLoadDemo: () => void;
+  onImport: (event: EventSnapshot) => void;
   onReset: () => void;
 }
 
@@ -23,6 +26,7 @@ export const EventSetupCard = memo(function EventSetupCard({
   onEventNameChange,
   onNext,
   onLoadDemo,
+  onImport,
   onReset,
 }: EventSetupCardProps) {
   const isReady = eventName.trim().length > 0;
@@ -92,6 +96,8 @@ export const EventSetupCard = memo(function EventSetupCard({
           </span>
         </span>
       </button>
+
+      <ImportEventCard hasDraft={hasDraft} onImport={onImport} />
 
       {hasDraft && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-ink/20 bg-white/70 px-4 py-3">

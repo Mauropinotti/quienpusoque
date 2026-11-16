@@ -1,7 +1,7 @@
 const criteria = [
-  { who: "1 adulto", rule: "paga su parte", tone: "bg-chimi-soft" },
-  { who: "1 menor", rule: "no paga: es invitado", tone: "bg-mustard" },
-  { who: "2 o más", rule: "pagan según el criterio", tone: "bg-chimi-soft" },
+  { who: "Con adultos", rule: "la familia aporta", tone: "bg-chimi-soft" },
+  { who: "Menores", rule: "100%, 50% o 0%, según elijan", tone: "bg-mustard" },
+  { who: "Sin adultos", rule: "no aporta: es invitada", tone: "bg-chimi-soft" },
 ];
 
 export function EligibilityCriteriaCard() {
