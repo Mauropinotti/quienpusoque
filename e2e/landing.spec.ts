@@ -13,6 +13,19 @@ test.describe("landing", () => {
     await expect(ticket.getByTestId("ticket-transfer").first()).toContainText("Los López");
   });
 
+  test("muestra la versión actual y el historial de versiones", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: /Nuevo · Quienpusoque V1\.2/ }).click();
+    await expect(page).toHaveURL(/#versiones$/);
+
+    const section = page.getByRole("region", { name: /Lo nuevo en la V1\.2/ });
+    await expect(section.getByTestId("current-release")).toHaveText("Quienpusoque V1.2");
+    await expect(section).toContainText("Menores al 100, 50 o 0%");
+    await expect(section.getByTestId("release")).toHaveCount(3);
+    await expect(section.getByTestId("release").first()).toContainText("Actual");
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: "Quienpusoque V1.2" })).toBeVisible();
+  });
+
   test("el botón de inicio abre el calculador en el paso 1", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("link", { name: "Empezar el cálculo" }).first().click();

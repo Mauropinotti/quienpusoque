@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { releaseName } from "@/lib/releases";
 
 export function AppFooter() {
   return (
@@ -7,7 +8,11 @@ export function AppFooter() {
         <p className="font-medium text-ink-soft">
           desarrollado por MauroHP - Lista 127 8B 2026.-
         </p>
-        <nav aria-label="Enlaces del pie" className="flex gap-4 font-bold">
+        <nav aria-label="Enlaces del pie" className="flex flex-wrap justify-center gap-4 font-bold">
+          {/* Absoluto ("/#..."): el pie también se ve en /calcular y /ayuda. */}
+          <Link href="/#versiones" prefetch={false} className="font-mono underline-offset-4 hover:underline">
+            {releaseName()}
+          </Link>
           <Link href="/calcular" prefetch={false} className="underline-offset-4 hover:underline">
             Calculadora
           </Link>

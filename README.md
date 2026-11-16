@@ -203,6 +203,8 @@ Si el entorno ya tiene un Chromium, `PLAYWRIGHT_CHROMIUM_PATH=/ruta/a/chrome npm
 
 ## Estado
 
+Versión actual: **Quienpusoque V1.2** (noviembre de 2026). La landing tiene una sección de progreso con las novedades y el historial; el detalle está en [`CHANGELOG.md`](CHANGELOG.md).
+
 - [x] Landing y calculadora mobile first.
 - [x] Alta, edición y eliminación de familias.
 - [x] Reglas de elegibilidad, reparto por familia y por persona.

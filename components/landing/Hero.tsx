@@ -4,6 +4,7 @@ import { SettlementTicket } from "@/components/results/SettlementTicket";
 import { buildFamilyTicketDetails } from "@/lib/flow/ticketDetails";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
 import { DEMO_EVENT_NAME, DEMO_FAMILIES } from "@/lib/flow/demoEvent";
+import { releaseName } from "@/lib/releases";
 import { deriveSettlement } from "@/lib/flow/eventInsights";
 
 // Las palabras que rotan en el título. La última es la que queda fija si el
@@ -17,10 +18,19 @@ export function Hero() {
   return (
     <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 pb-16 pt-6 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-10 lg:pb-24 lg:pt-12">
       <div>
-        <p className="inline-flex -rotate-2 items-center gap-2 rounded-full border-2 border-ink bg-lime px-3.5 py-1 text-sm font-bold shadow-hard-sm">
-          <LockIcon className="text-base" />
-          Sin registro · todo queda en tu celu
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="inline-flex -rotate-2 items-center gap-2 rounded-full border-2 border-ink bg-lime px-3.5 py-1 text-sm font-bold shadow-hard-sm">
+            <LockIcon className="text-base" />
+            Sin registro · todo queda en tu celu
+          </p>
+          <a
+            href="#versiones"
+            className="press inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-ink bg-ember px-3.5 py-1 text-sm font-bold text-ink shadow-hard-sm"
+          >
+            Nuevo · {releaseName()}
+            <ArrowRightIcon className="text-base" />
+          </a>
+        </div>
 
         <h1 className="font-display mt-6 text-[clamp(3.4rem,13vw,7.6rem)] leading-[0.86]">
           <span className="sr-only">¿Quién puso qué?</span>
@@ -43,9 +53,9 @@ export function Hero() {
         </h1>
 
         <p className="mt-9 max-w-xl text-lg leading-relaxed text-ink-soft sm:text-xl">
-          Terminó la juntada y nadie sabe cuánto debe. Cargá quién vino y cuánto
-          puso: la app reparte, te sugiere el criterio más justo y arma las
-          transferencias para mandar al grupo.
+          Terminó la juntada y nadie sabe cuánto debe. Cargá quién vino y qué
+          puso cada uno: la app suma, reparte, te sugiere el criterio más justo
+          y arma las transferencias para mandar al grupo.
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">

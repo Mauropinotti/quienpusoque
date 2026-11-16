@@ -31,6 +31,10 @@ Objetivo: explicar en segundos qué hace la app y llevar al cálculo.
 - Link secundario **Ver un asado de ejemplo** → `/calcular?demo=1`.
 - Ticket de muestra calculado en build con el motor real (no es una imagen).
 - Cinta animada, "Tres pasos y a la sobremesa" y bloque de privacidad.
+- **Progreso** (`#versiones`): la versión actual ("Quienpusoque V1.2") con sus
+  novedades y el historial de versiones. Se llega desde el aviso "Nuevo ·
+  Quienpusoque V1.2" del inicio, el menú (`Novedades`) y el pie, que muestra
+  la versión en todas las páginas. Los datos salen de `lib/releases.ts`.
 
 ## Arranque de la calculadora
 

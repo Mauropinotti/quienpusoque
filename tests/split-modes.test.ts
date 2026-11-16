@@ -293,3 +293,19 @@ describe("datos de versiones anteriores", () => {
     }
   });
 });
+
+describe("versiones", () => {
+  it("la versión actual de la landing coincide con package.json", async () => {
+    const { CURRENT_RELEASE, RELEASES, formatReleaseMonth, releaseName } = await import("@/lib/releases");
+    const { readFile } = await import("node:fs/promises");
+    const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+
+    expect(releaseName()).toBe("Quienpusoque V1.2");
+    expect(pkg.version.split(".").slice(0, 2).join(".")).toBe(CURRENT_RELEASE.version);
+    expect(formatReleaseMonth(CURRENT_RELEASE)).toBe("noviembre de 2026");
+    // De la más nueva a la más vieja, sin repetir.
+    const months = RELEASES.map((release) => release.month);
+    expect([...months].sort().reverse()).toEqual(months);
+    expect(new Set(RELEASES.map((release) => release.version)).size).toBe(RELEASES.length);
+  });
+});

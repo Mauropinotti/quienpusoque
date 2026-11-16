@@ -85,7 +85,7 @@ Usar siempre `lib/storage/browserStorage.ts` (sondeo cacheado). El borrador se e
 
 ## Exportar / importar
 
-El cálculo en curso se exporta como `.json` (`format: "quien-puso-que/calculo"`, `version: 1`) y se importa desde el paso 1. `lib/exchange/eventFile.ts` valida el archivo entero antes de tocar el estado: o entra todo o no entra nada. Si cambia el formato, subir `version` y aceptar las anteriores. No incluye foto ni historial. Detalle en `docs/ux-flow.md`.
+El cálculo en curso se exporta como `.json` (`format: "quien-puso-que/calculo"`, `version: 2`; la 1 se sigue leyendo) y se importa desde el paso 1. `lib/exchange/eventFile.ts` valida el archivo entero antes de tocar el estado: o entra todo o no entra nada. Si cambia el formato, subir `version` y aceptar las anteriores. No incluye foto ni historial. Detalle en `docs/ux-flow.md`.
 
 ## PDF final
 
@@ -110,6 +110,10 @@ Reglas:
 - No poner lógica de cálculo dentro de la ayuda; solo describe el funcionamiento.
 - No cambiar el tono a corporativo rígido: la app es cálida, clara y argentina.
 - No usar texto blanco sobre `ember`: no pasa contraste. Sobre brasa va `ink`.
+
+## Versiones
+
+La versión actual y el historial viven en `lib/releases.ts` (sección "Progreso" de la landing, aviso del hero y pie). Al publicar una versión: agregarla arriba ahí, subir `version` en `package.json` y sumarla en `CHANGELOG.md`. Un test controla que coincidan.
 
 ## Verificación
 

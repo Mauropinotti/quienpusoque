@@ -27,9 +27,9 @@ function StepCard({ number, title, children, visual, className = "", tilt = "" }
 
 function FamilyChipsVisual() {
   const rows = [
-    { name: "Los García", dots: 4, amount: "$8.000", tone: "bg-white" },
-    { name: "Los López", dots: 1, amount: "$0", tone: "bg-white" },
-    { name: "Los Martínez", dots: 1, amount: "no aporta", tone: "bg-mustard-soft" },
+    { name: "Los García", adults: 2, minors: 2, amount: "$8.000", tone: "bg-white" },
+    { name: "Los López", adults: 1, minors: 0, amount: "$0", tone: "bg-white" },
+    { name: "Los Martínez", adults: 0, minors: 1, amount: "no aporta", tone: "bg-mustard-soft" },
   ];
 
   return (
@@ -40,9 +40,13 @@ function FamilyChipsVisual() {
           className={`flex items-center justify-between gap-3 rounded-xl border-2 border-ink px-3 py-2 text-sm ${row.tone}`}
         >
           <span className="font-bold">{row.name}</span>
-          <span className="flex gap-1">
-            {Array.from({ length: row.dots }, (_, i) => (
-              <span key={i} className="h-2.5 w-2.5 rounded-full bg-ink" />
+          {/* Adultos: puntos de tinta. Menores: puntos mostaza. */}
+          <span className="flex items-center gap-1">
+            {Array.from({ length: row.adults }, (_, i) => (
+              <span key={`a${i}`} className="h-2.5 w-2.5 rounded-full bg-ink" />
+            ))}
+            {Array.from({ length: row.minors }, (_, i) => (
+              <span key={`m${i}`} className="h-2 w-2 rounded-full border border-ink bg-mustard" />
             ))}
           </span>
           <span className="font-mono font-bold">{row.amount}</span>
