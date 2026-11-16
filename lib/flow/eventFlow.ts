@@ -1,8 +1,8 @@
 import type { EventData, EventSnapshot } from "@/types/event";
-import type { Family, SplitBasis, SplitMode } from "@/types/family";
+import type { Family, SplitMode } from "@/types/family";
 import type { EventTicketPhoto } from "@/types/pdf";
 import type { LocalEventDraft } from "@/lib/storage/localEventStorage";
-import { getSplitBasis, isPersonSplitMode } from "@/lib/calculations/splitModes";
+import { DEFAULT_SPLIT_MODE } from "@/lib/calculations/splitModes";
 import { DEMO_EVENT_NAME, DEMO_FAMILIES } from "./demoEvent";
 
 /**
@@ -11,12 +11,12 @@ import { DEMO_EVENT_NAME, DEMO_FAMILIES } from "./demoEvent";
  * despacha acciones y deriva datos con `lib/flow/eventInsights.ts`.
  */
 
-export type FlowStep = "setup" | "families" | "recommendation" | "results";
+export type FlowStep = "setup" | "families" | "criterion" | "results";
 
 export const FLOW_STEPS: FlowStep[] = [
   "setup",
   "families",
-  "recommendation",
+  "criterion",
   "results",
 ];
 
@@ -24,9 +24,8 @@ export interface EventFlowState {
   step: FlowStep;
   eventData: EventData;
   createdAt: string;
-  /** Criterio elegido en pantalla (puede no estar confirmado). */
+  /** Cómo pagan los menores, elegido en pantalla (puede no estar confirmado). */
   selectedMode: SplitMode;
-  recommendationAccepted: boolean | null;
   savedClosedEventId: string | null;
   historySaveError: string;
   /** Foto opcional del ticket. Solo en memoria: nunca se persiste. */
@@ -39,9 +38,9 @@ export type EventFlowAction =
   | { type: "family-added"; family: Family }
   | { type: "family-updated"; family: Family }
   | { type: "family-removed"; id: string }
-  | { type: "recommendation-opened"; recommendedMode: SplitBasis }
+  | { type: "criterion-opened" }
   | { type: "mode-selected"; mode: SplitMode }
-  | { type: "mode-confirmed"; recommendedMode: SplitBasis | null }
+  | { type: "mode-confirmed" }
   | { type: "closed-event-saved"; id: string }
   | { type: "closed-event-save-failed"; message: string }
   | { type: "ticket-photo-changed"; photo: EventTicketPhoto | null }
@@ -62,8 +61,7 @@ export function createEmptyFlowState(now: string): EventFlowState {
     step: "setup",
     eventData: EMPTY_EVENT_DATA,
     createdAt: now,
-    selectedMode: "by-family",
-    recommendationAccepted: null,
+    selectedMode: DEFAULT_SPLIT_MODE,
     savedClosedEventId: null,
     historySaveError: "",
     ticketPhoto: null,
@@ -90,7 +88,6 @@ function createFlowStateFromSnapshot(
       families: snapshot.families,
     },
     selectedMode: snapshot.selectedMode,
-    recommendationAccepted: snapshot.recommendationAccepted,
   };
 }
 
@@ -130,7 +127,6 @@ function withFamilies(
   return {
     ...state,
     eventData: { ...state.eventData, families },
-    recommendationAccepted: null,
     savedClosedEventId: null,
     historySaveError: "",
     ticketPhoto: null,
@@ -170,37 +166,19 @@ export function eventFlowReducer(
         state.eventData.families.filter((family) => family.id !== action.id)
       );
 
-    case "recommendation-opened":
-      return {
-        ...state,
-        step: "recommendation",
-        // Si sugiere por persona y ya habían elegido cómo pagan los menores,
-        // se respeta esa elección.
-        selectedMode:
-          action.recommendedMode === "by-person" && isPersonSplitMode(state.selectedMode)
-            ? state.selectedMode
-            : action.recommendedMode,
-        recommendationAccepted: null,
-      };
+    case "criterion-opened":
+      // Se respeta lo que ya habían elegido sobre los menores.
+      return { ...state, step: "criterion" };
 
     case "mode-selected":
       if (action.mode === state.selectedMode) return state;
-      return {
-        ...state,
-        selectedMode: action.mode,
-        recommendationAccepted: null,
-      };
+      return { ...state, selectedMode: action.mode };
 
     case "mode-confirmed":
       return {
         ...state,
         step: "results",
         eventData: { ...state.eventData, splitMode: state.selectedMode },
-        // Se acepta la sugerencia si coincide la base (familia o persona):
-        // cuánto pagan los menores es una decisión aparte del grupo.
-        recommendationAccepted: action.recommendedMode
-          ? getSplitBasis(state.selectedMode) === action.recommendedMode
-          : null,
         savedClosedEventId: null,
         historySaveError: "",
       };

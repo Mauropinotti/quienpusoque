@@ -10,6 +10,7 @@ import {
   canAddContributionRow,
   canChangePeople,
   changePeople,
+  asksIfMinorsPay,
   emptyFamilyFormValues,
   familyToFormValues,
   getFormTotal,
@@ -139,10 +140,26 @@ export const FamilyForm = memo(function FamilyForm({
             />
           </div>
           {errors.people && <p className="mt-2 text-sm font-bold text-morron">{errors.people}</p>}
-          {amountLocked && values.minors > 0 && (
-            <p className="mt-2 rounded-xl bg-mustard-soft px-3 py-2 text-sm text-mustard-text">
-              Sin adultos, esta familia no aporta: no paga ni cobra, y sus menores no entran en el reparto.
-            </p>
+          {asksIfMinorsPay(values) && (
+            // Menores que vinieron solos: ¿pagan su parte (a través de su tutor)?
+            <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border-2 border-ink bg-white p-3 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink">
+              <input
+                type="checkbox"
+                checked={values.paysOwnShare}
+                onChange={(event) => update("paysOwnShare", event.target.checked)}
+                className="mt-0.5 h-5 w-5 shrink-0 accent-ink"
+              />
+              <span>
+                <span className="block font-bold">
+                  {values.minors === 1 ? "Va a pagar su parte" : "Van a pagar su parte"}
+                </span>
+                <span className="block text-sm leading-snug text-ink-soft">
+                  Sin adultos en la familia, la paga su padre, madre o tutor. Si no
+                  la marcás, {values.minors === 1 ? "queda invitado" : "quedan invitados"} y no
+                  {values.minors === 1 ? " entra" : " entran"} en la cuenta.
+                </span>
+              </span>
+            </label>
           )}
         </fieldset>
 
@@ -153,7 +170,7 @@ export const FamilyForm = memo(function FamilyForm({
             prefix="$"
             value="0"
             disabled
-            hint="Sin adultos no aporta, así que el monto queda en $0."
+            hint="Menores solos invitados: no aportan, así que el monto queda en $0."
           />
         ) : (
           <fieldset>

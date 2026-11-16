@@ -1,10 +1,5 @@
 import type { FamilyBalance, Transfer } from "@/types/calculation";
 import type { ClosedEvent } from "@/types/event";
-import type {
-  RecommendationConfidence,
-  RecommendationMetrics,
-  SplitRecommendation,
-} from "@/types/recommendation";
 import {
   getBrowserStorage,
   readStorageJson,
@@ -12,8 +7,7 @@ import {
 } from "./browserStorage";
 import {
   isRecord,
-  isSplitBasis,
-  isSplitMode,
+  isStoredSplitMode,
   isValidDate,
   isValidFamily,
   normalizeFamily,
@@ -32,10 +26,6 @@ interface ClosedEventsPayload {
 export interface SaveClosedEventResult {
   saved: boolean;
   events: ClosedEvent[];
-}
-
-function isConfidence(value: unknown): value is RecommendationConfidence {
-  return value === "low" || value === "medium" || value === "high";
 }
 
 function isValidBalance(value: unknown): value is FamilyBalance {
@@ -100,34 +90,6 @@ function isValidTransfer(value: unknown): value is Transfer {
   );
 }
 
-function isValidMetrics(value: unknown): value is RecommendationMetrics {
-  if (!isRecord(value)) return false;
-
-  return [
-    value.eligibleFamilies,
-    value.eligiblePersons,
-    value.singleAdultFamilyRatio,
-    value.largeFamilyRatio,
-    value.averageFamilySize,
-    value.averageImpactBetweenModes,
-    value.maxImpactBetweenModes,
-  ].every((metric) => typeof metric === "number" && Number.isFinite(metric));
-}
-
-function isValidRecommendation(value: unknown): value is SplitRecommendation {
-  if (!isRecord(value)) return false;
-
-  const { recommendedMode, confidence, reasons, metrics } = value;
-
-  return (
-    isSplitBasis(recommendedMode) &&
-    isConfidence(confidence) &&
-    Array.isArray(reasons) &&
-    reasons.every((reason) => typeof reason === "string") &&
-    isValidMetrics(metrics)
-  );
-}
-
 function isValidClosedEvent(value: unknown): value is ClosedEvent {
   if (!isRecord(value)) return false;
 
@@ -141,7 +103,6 @@ function isValidClosedEvent(value: unknown): value is ClosedEvent {
     familiesSnapshot,
     balancesSnapshot,
     transfersSnapshot,
-    recommendationSnapshot,
     optionalNote,
   } = value;
 
@@ -155,15 +116,13 @@ function isValidClosedEvent(value: unknown): value is ClosedEvent {
     typeof totalAmount === "number" &&
     Number.isFinite(totalAmount) &&
     totalAmount >= 0 &&
-    isSplitMode(splitModeUsed) &&
+    isStoredSplitMode(splitModeUsed) &&
     Array.isArray(familiesSnapshot) &&
     familiesSnapshot.every(isValidFamily) &&
     Array.isArray(balancesSnapshot) &&
     balancesSnapshot.every(isValidBalance) &&
     Array.isArray(transfersSnapshot) &&
     transfersSnapshot.every(isValidTransfer) &&
-    (recommendationSnapshot === null ||
-      isValidRecommendation(recommendationSnapshot)) &&
     (optionalNote === undefined || typeof optionalNote === "string")
   );
 }
@@ -176,11 +135,14 @@ function parsePayload(value: unknown): ClosedEvent[] {
   if (version !== STORAGE_VERSION) return [];
   if (!Array.isArray(events)) return [];
 
-  // Las familias de versiones anteriores se pasan al formato actual.
-  return events.filter(isValidClosedEvent).map((event) => ({
-    ...event,
-    familiesSnapshot: event.familiesSnapshot.map(normalizeFamily),
-  }));
+  // Las familias de versiones anteriores se pasan al formato actual. La
+  // sugerencia que guardaban hasta V1.2 ya no se usa: se descarta.
+  return events.filter(isValidClosedEvent).map((event) => {
+    const { recommendationSnapshot: _legacy, ...rest } = event as ClosedEvent & {
+      recommendationSnapshot?: unknown;
+    };
+    return { ...rest, familiesSnapshot: event.familiesSnapshot.map(normalizeFamily) };
+  });
 }
 
 function sortByClosedAt(events: ClosedEvent[]): ClosedEvent[] {

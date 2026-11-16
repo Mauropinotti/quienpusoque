@@ -59,7 +59,7 @@ export function calculateBalances(eventData: EventData): CalculationResult {
         {
           code: "NULL_SPLIT_MODE",
           message:
-            "Debe seleccionarse un criterio de reparto (por familia o por persona) antes de calcular.",
+            "Debe elegirse cómo pagan los menores antes de calcular.",
         },
       ],
     };
@@ -88,14 +88,15 @@ export function calculateBalances(eventData: EventData): CalculationResult {
   const withEligibility = computeAllEligibility(families);
   const eligible = withEligibility.filter((f) => f.isEligibleToPay);
 
-  if (eligible.length === 0) {
+  // Sin adultos no hay quién cubra a los menores: no se puede repartir.
+  if (!eligible.some((f) => f.adults > 0)) {
     return {
       ok: false,
       errors: [
         {
           code: "NO_ELIGIBLE_FAMILIES",
           message:
-            "Ninguna familia está habilitada para pagar. Revisá los datos cargados.",
+            "Hace falta al menos una familia con adultos para repartir. Revisá los datos cargados.",
         },
       ],
     };

@@ -7,13 +7,14 @@ import {
   getContributionLabel,
 } from "@/lib/calculations/contributions";
 import { formatCurrency } from "@/lib/formatting/formatCurrency";
-import { getSplitBasis } from "@/lib/calculations/splitModes";
 import {
   SPLIT_MODE_LABEL,
   SPLIT_MODE_RULE,
   describeComposition,
   describeFamilyShare,
   describeSplitSteps,
+  describeTransfer,
+  getSoloMinorIds,
 } from "@/lib/text/describeSplit";
 import { formatMediumDateTime } from "@/lib/formatting/formatDate";
 import { buildEventFileName } from "@/lib/formatting/fileName";
@@ -42,7 +43,6 @@ const COLOR = {
   amber: "#8a5a00",
 };
 
-const BASIS_LABEL = { "by-family": "por familia", "by-person": "por persona" } as const;
 
 function statusLabel(status: BalanceStatus): string {
   if (status === "receives") return "cobra";
@@ -63,22 +63,7 @@ function getEligibleFamilyCount(data: EventTicketPdfData): number {
 }
 
 function getCriterionExplanation(data: EventTicketPdfData): string {
-  const label = SPLIT_MODE_LABEL[data.splitMode];
-  const rule = SPLIT_MODE_RULE[data.splitMode];
-
-  if (!data.recommendation) {
-    return `Se repartió ${label}, según el criterio elegido. ${rule}`;
-  }
-
-  const recommended = data.recommendation.recommendedMode;
-  if (getSplitBasis(data.splitMode) !== recommended) {
-    return `Se repartió ${label} por elección del grupo; la app había recomendado repartir ${BASIS_LABEL[recommended]}. ${rule}`;
-  }
-
-  const firstReason = data.recommendation.reasons[0];
-  return firstReason
-    ? `Se repartió ${label}. La app recomendó repartir ${BASIS_LABEL[recommended]}: ${firstReason} ${rule}`
-    : `Se repartió ${label}, como recomendó la app. ${rule}`;
+  return `Se repartió ${SPLIT_MODE_LABEL[data.splitMode]}. ${SPLIT_MODE_RULE[data.splitMode]}`;
 }
 
 const money = (currency: string) => (amount: number) => formatCurrency(amount, currency);
@@ -93,10 +78,12 @@ function addCalculationSteps(doc: jsPDF, data: EventTicketPdfData, y: number): n
   y = addBulletLines(doc, steps, y);
 
   const familiesById = new Map(data.families.map((family) => [family.id, family]));
+  const soloMinorIds = getSoloMinorIds(data.families);
   const shareLines = data.balances.flatMap((balance) => {
     const family = familiesById.get(balance.familyId);
     const formula = family ? describeFamilyShare(family, data.breakdown, format) : null;
-    return formula ? [`${balance.name}: ${formula} = ${format(balance.expectedShare)}`] : [];
+    const label = soloMinorIds.has(balance.familyId) ? `${balance.name} (menor solo)` : balance.name;
+    return formula ? [`${label}: ${formula} = ${format(balance.expectedShare)}`] : [];
   });
 
   if (shareLines.length > 0) {
@@ -168,17 +155,14 @@ function addParagraph(doc: jsPDF, text: string, y: number): number {
 }
 
 function addSummaryGrid(doc: jsPDF, data: EventTicketPdfData, y: number): number {
-  const totalAmount = data.breakdown.totalAmount;
-  const recommended = data.recommendation
-    ? BASIS_LABEL[data.recommendation.recommendedMode]
-    : "sin recomendación";
+  const { totalAmount, adults, minors, soloMinors } = data.breakdown;
   const items = [
     ["Gasto total", formatCurrency(totalAmount, data.currency)],
     ["Familias cargadas", String(data.families.length)],
     ["Familias que aportan", String(getEligibleFamilyCount(data))],
-    ["Adultos + menores", `${data.breakdown.adults} + ${data.breakdown.minors}`],
+    ["Adultos + menores", `${adults} + ${minors}`],
+    ["Menores solos que pagan", String(soloMinors)],
     ["Criterio usado", SPLIT_MODE_LABEL[data.splitMode]],
-    ["Recomendado", recommended],
   ];
 
   // 3 columnas x 2 filas: el ticket con foto entra en una sola hoja.
@@ -268,6 +252,8 @@ function addFamiliesTable(doc: jsPDF, data: EventTicketPdfData, y: number): numb
     data.families.map((family) => [family.id, family])
   );
 
+  const soloMinorIds = getSoloMinorIds(data.families);
+
   // Se mide todo antes de dibujar: así el encabezado nunca queda solo al pie.
   const groups = data.balances.map((balance) => {
     const family = familiesById.get(balance.familyId);
@@ -295,7 +281,8 @@ function addFamiliesTable(doc: jsPDF, data: EventTicketPdfData, y: number): numb
     }
 
     const row = [
-      balance.name,
+      // El menor solo queda marcado: transfiere o cobra su tutor.
+      soloMinorIds.has(balance.familyId) ? `${balance.name} (menor solo)` : balance.name,
       family ? String(family.adults) : "-",
       family ? String(family.minors) : "-",
       formatCurrency(balance.paidAmount, data.currency),
@@ -350,12 +337,12 @@ function addNonContributors(doc: jsPDF, data: EventTicketPdfData, y: number): nu
   y = addSectionTitle(doc, "Familias no aportantes", y);
   guests.forEach((guest) => {
     const family = familiesById.get(guest.familyId);
-    const who = family ? describeComposition(family) : "sin adultos";
+    const who = family ? describeComposition(family) : "menores solos";
     y = ensureSpace(doc, y, 7);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(COLOR.stone700);
-    doc.text(`${guest.name}: ${who}, sin adultos. No aporta ni entra en el reparto.`, MARGIN, y);
+    doc.text(`${guest.name}: ${who}. Invitados: no pagan su parte ni entran en el reparto.`, MARGIN, y);
     y += 6;
   });
 
@@ -369,20 +356,18 @@ function addTransfers(doc: jsPDF, data: EventTicketPdfData, y: number): number {
     return addParagraph(doc, "No hace falta transferir. El reparto quedó equilibrado.", y);
   }
 
+  // Un menor que vino solo no transfiere: lo hace su padre, madre o tutor.
+  const soloMinorIds = getSoloMinorIds(data.families);
+  const format = money(data.currency);
+
   data.transfers.forEach((transfer) => {
-    y = ensureSpace(doc, y, 8);
+    const lines = doc.splitTextToSize(describeTransfer(transfer, soloMinorIds, format), CONTENT_WIDTH);
+    y = ensureSpace(doc, y, lines.length * LINE_HEIGHT + 4);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(COLOR.stone700);
-    doc.text(
-      `${transfer.fromFamilyName} le transfiere ${formatCurrency(
-        transfer.amount,
-        data.currency
-      )} a ${transfer.toFamilyName}`,
-      MARGIN,
-      y
-    );
-    y += 5;
+    doc.text(lines, MARGIN, y);
+    y += lines.length * LINE_HEIGHT + 0.8;
   });
 
   return y + 2;

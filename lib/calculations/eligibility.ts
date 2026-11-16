@@ -4,18 +4,31 @@ import type { ValidationError } from "@/types/calculation";
 /** Tope por familia o grupo, para adultos y para menores por separado. */
 export const MAX_PEOPLE_PER_KIND = 20;
 
-type Composition = Pick<Family, "adults" | "minors">;
+type Composition = Pick<Family, "adults" | "minors" | "paysOwnShare">;
 
 export function getPeopleCount(family: Composition): number {
   return family.adults + family.minors;
 }
 
+/** Menores que vinieron solos: una "familia" sin adultos. */
+export function isSoloMinorFamily(family: Pick<Family, "adults">): boolean {
+  return family.adults === 0;
+}
+
 /**
- * Una familia sin adultos no aporta: no paga, no cobra y no carga monto.
- * Sus menores no entran en la cuenta. Es la regla del antiguo "menor solo".
+ * Menores solos que pagan su parte: entran en la cuenta y su parte la paga
+ * un padre, madre o tutor.
+ */
+export function isPayingSoloMinorFamily(family: Composition): boolean {
+  return isSoloMinorFamily(family) && family.paysOwnShare === true;
+}
+
+/**
+ * Invitada: menores solos que no pagan su parte. No paga, no cobra, no carga
+ * monto y sus menores no entran en la cuenta.
  */
 export function isGuestFamily(family: Composition): boolean {
-  return family.adults === 0;
+  return isSoloMinorFamily(family) && family.paysOwnShare !== true;
 }
 
 function isValidCount(value: number): boolean {
@@ -46,7 +59,7 @@ export function validateFamily(family: Family): ValidationError[] {
   if (isGuestFamily(family) && family.paidAmount > 0) {
     errors.push({
       code: "GUEST_PAID_AMOUNT",
-      message: `"${family.name}": una familia sin adultos no aporta, así que su monto pagado debe ser 0.`,
+      message: `"${family.name}": unos menores solos que no pagan su parte no aportan, así que su monto pagado debe ser 0.`,
       familyId: family.id,
     });
   }
@@ -62,8 +75,9 @@ export function validateFamilies(families: Family[]): ValidationError[] {
 
 /**
  * Reglas:
- * - con al menos 1 adulto → aporta; entran en la cuenta sus adultos y menores
- * - sin adultos           → no aporta (invitada); nadie de la familia entra
+ * - con al menos 1 adulto           → entra; cuentan sus adultos y menores
+ * - sin adultos, paga su parte      → entra; cuentan sus menores (paga su tutor)
+ * - sin adultos, no paga su parte   → invitada; nadie de la familia entra
  */
 export function computeEligibility(family: Family): FamilyWithEligibility {
   const isEligibleToPay = !isGuestFamily(family);

@@ -11,6 +11,9 @@ import {
   describeComposition,
   describeFamilyShare,
   describeSplitSteps,
+  describeTransfer,
+  getSoloMinorIds,
+  guardianOf,
 } from "./describeSplit";
 
 interface GenerateOptions {
@@ -65,12 +68,16 @@ function getShareLines(
   money: (amount: number) => string
 ): string[] {
   const familiesById = new Map(families.map((family) => [family.id, family]));
+  const soloMinorIds = getSoloMinorIds(families);
   const lines: string[] = [];
 
   for (const balance of balances) {
     const family = familiesById.get(balance.familyId);
     const formula = family ? describeFamilyShare(family, breakdown, money) : null;
-    if (formula) lines.push(`- ${balance.name}: ${formula} = ${money(balance.expectedShare)}`);
+    if (formula) {
+      const label = soloMinorIds.has(balance.familyId) ? `${balance.name} (menor solo)` : balance.name;
+      lines.push(`- ${label}: ${formula} = ${money(balance.expectedShare)}`);
+    }
   }
 
   return lines;
@@ -88,6 +95,12 @@ export function generateWhatsappText({
   const money = (amount: number) => formatMoney(amount, currency);
   const title = eventName.trim() || "Evento";
   const familiesById = new Map(families.map((family) => [family.id, family]));
+  const soloMinorIds = getSoloMinorIds(families);
+  // Un menor que vino solo no transfiere ni cobra: lo hace su tutor.
+  const who = (balance: FamilyBalance) =>
+    soloMinorIds.has(balance.familyId)
+      ? `${balance.name} (menor; ${guardianOf(balance.name)})`
+      : balance.name;
   const nonContributors = balances.filter((balance) => balance.status === "guest");
   const receivers = balances.filter((balance) => balance.status === "receives");
   const payers = balances.filter((balance) => balance.status === "pays");
@@ -117,9 +130,7 @@ export function generateWhatsappText({
   lines.push("", "Transferencias sugeridas:");
   if (transfers.length > 0) {
     for (const transfer of transfers) {
-      lines.push(
-        `- ${transfer.fromFamilyName} le transfiere ${money(transfer.amount)} a ${transfer.toFamilyName}`
-      );
+      lines.push(`- ${describeTransfer(transfer, soloMinorIds, money)}`);
     }
   } else {
     lines.push("- No hace falta transferir. El reparto quedó equilibrado.");
@@ -128,19 +139,19 @@ export function generateWhatsappText({
   if (receivers.length > 0) {
     lines.push("", "Cobran:");
     for (const balance of receivers) {
-      lines.push(`- ${balance.name}: ${money(Math.abs(balance.balance))}`);
+      lines.push(`- ${who(balance)}: ${money(Math.abs(balance.balance))}`);
     }
   }
 
   if (payers.length > 0) {
     lines.push("", "Pagan:");
     for (const balance of payers) {
-      lines.push(`- ${balance.name}: ${money(Math.abs(balance.balance))}`);
+      lines.push(`- ${who(balance)}: ${money(Math.abs(balance.balance))}`);
     }
   }
 
   if (nonContributors.length > 0) {
-    lines.push("", "No aportan (sin adultos):");
+    lines.push("", "No aportan (menores solos invitados):");
     for (const balance of nonContributors) {
       const family = familiesById.get(balance.familyId);
       lines.push(`- ${balance.name}${family ? `: ${describeComposition(family)}` : ""}, sin cargo`);

@@ -8,8 +8,9 @@ import {
 } from "./browserStorage";
 import {
   isRecord,
-  isSplitMode,
   isValidFamily,
+  readStoredSelectedMode,
+  readStoredSplitMode,
   normalizeFamily,
   type StoredFamily,
 } from "./validators";
@@ -26,14 +27,12 @@ export interface LocalEventDraft {
   families: Family[];
   selectedMode: SplitMode;
   splitMode: SplitMode | null;
-  recommendationAccepted: boolean | null;
   updatedAt: string;
 }
 
 export interface SaveEventDraftInput {
   eventData: EventData;
   selectedMode: SplitMode;
-  recommendationAccepted: boolean | null;
   createdAt: string;
 }
 
@@ -48,22 +47,20 @@ function parseDraft(value: unknown): LocalEventDraft | null {
     families,
     selectedMode,
     splitMode,
-    recommendationAccepted,
     updatedAt,
   } = value;
+
+  // Borradores anteriores a V1.3 pueden traer "por familia" y la aceptación
+  // de la sugerencia (que ya no existe y se ignora).
+  const storedSelectedMode = readStoredSelectedMode(selectedMode);
+  const storedSplitMode = readStoredSplitMode(splitMode);
 
   if (version !== DRAFT_VERSION) return null;
   if (typeof eventName !== "string") return null;
   if (typeof currency !== "string" || currency.trim() === "") return null;
   if (!Array.isArray(families) || !families.every(isValidFamily)) return null;
-  if (!isSplitMode(selectedMode)) return null;
-  if (splitMode !== null && !isSplitMode(splitMode)) return null;
-  if (
-    recommendationAccepted !== null &&
-    typeof recommendationAccepted !== "boolean"
-  ) {
-    return null;
-  }
+  if (storedSelectedMode === undefined) return null;
+  if (storedSplitMode === undefined) return null;
   if (typeof updatedAt !== "string" || Number.isNaN(Date.parse(updatedAt))) {
     return null;
   }
@@ -83,9 +80,8 @@ function parseDraft(value: unknown): LocalEventDraft | null {
     // menores, monto en una familia sin adultos o la nota libre previa al
     // desglose: normalizeFamily los pone al día.
     families: (families as StoredFamily[]).map(normalizeFamily),
-    selectedMode,
-    splitMode,
-    recommendationAccepted,
+    selectedMode: storedSelectedMode,
+    splitMode: storedSplitMode,
     updatedAt,
   };
 }
@@ -97,7 +93,6 @@ function parseDraft(value: unknown): LocalEventDraft | null {
 export function getDraftFingerprint({
   eventData,
   selectedMode,
-  recommendationAccepted,
   createdAt,
 }: SaveEventDraftInput): string {
   return JSON.stringify([
@@ -106,7 +101,6 @@ export function getDraftFingerprint({
     eventData.splitMode,
     eventData.families,
     selectedMode,
-    recommendationAccepted,
     createdAt,
   ]);
 }
@@ -136,7 +130,6 @@ export function readCurrentEventDraft(): LocalEventDraft | null {
 export function saveCurrentEventDraft({
   eventData,
   selectedMode,
-  recommendationAccepted,
   createdAt,
 }: SaveEventDraftInput): LocalEventDraft | null {
   const draft: LocalEventDraft = {
@@ -147,7 +140,6 @@ export function saveCurrentEventDraft({
     families: eventData.families,
     selectedMode,
     splitMode: eventData.splitMode,
-    recommendationAccepted,
     updatedAt: new Date().toISOString(),
   };
 

@@ -44,25 +44,27 @@ export interface FamilyBalance {
 export interface SplitBreakdown {
   splitMode: SplitMode;
   totalAmount: number;
-  /** Familias con al menos un adulto. */
+  /** Familias que entran en la cuenta. */
   contributingFamilies: number;
-  /** Adultos de las familias que aportan. */
+  /** Adultos que entran en la cuenta. */
   adults: number;
-  /** Menores de las familias que aportan. */
+  /** Menores que entran en la cuenta: los de familias con adultos y los solos que pagan su parte. */
   minors: number;
-  /** `by-family`: lo que pone cada familia. 0 en los criterios por persona. */
-  familyShare: number;
-  /** Criterios por persona: total ÷ (adultos + menores). */
+  /** De esos menores, los que vinieron solos (paga su padre, madre o tutor). */
+  soloMinors: number;
+  /** Total ÷ (adultos + menores). 0 cuando los menores no pagan. */
   personShare: number;
   /** Parte de la cuota que paga cada menor: 1, 0,5 o 0. */
   minorRatio: number;
   /** Lo que paga cada menor. */
   minorShare: number;
-  /** Lo que dejan de pagar entre todos los menores (solo menores al 50%). */
-  minorsUnpaid: number;
-  /** Lo que suma cada adulto por lo que no pagan los menores (solo 50%). */
+  /** Lo que le falta a cada menor para la parte igual (solo menores al 50%). */
+  minorCover: number;
+  /** Lo que no pagan los menores solos, que se reparte entre todos los adultos. */
+  soloMinorsUnpaid: number;
+  /** Lo que suma cada adulto por los menores solos. */
   adultSurcharge: number;
-  /** Lo que paga cada adulto. */
+  /** Lo que paga cada adulto por sí mismo (sin contar a los menores de su familia). */
   adultShare: number;
 }
 

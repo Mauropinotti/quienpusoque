@@ -1,10 +1,14 @@
-import type { ContributionItem, Family, SplitBasis, SplitMode } from "@/types/family";
-import { MAX_PEOPLE_PER_KIND, isGuestFamily } from "@/lib/calculations/eligibility";
+import type { ContributionItem, Family, LegacySplitMode, SplitMode } from "@/types/family";
+import {
+  MAX_PEOPLE_PER_KIND,
+  isGuestFamily,
+  isSoloMinorFamily,
+} from "@/lib/calculations/eligibility";
 import {
   MAX_CONTRIBUTION_ITEMS,
   toContributionFields,
 } from "@/lib/calculations/contributions";
-import { isSplitModeValue } from "@/lib/calculations/splitModes";
+import { DEFAULT_SPLIT_MODE, isSplitModeValue } from "@/lib/calculations/splitModes";
 
 // Validadores compartidos por el borrador, el historial y el archivo
 // exportado. Todo dato que viene de afuera pasa por acá antes de llegar a la UI.
@@ -17,8 +21,30 @@ export function isSplitMode(value: unknown): value is SplitMode {
   return isSplitModeValue(value);
 }
 
-export function isSplitBasis(value: unknown): value is SplitBasis {
-  return value === "by-family" || value === "by-person";
+/** Criterio de una cuenta cerrada: puede ser "por familia" si es anterior a V1.3. */
+export function isStoredSplitMode(value: unknown): value is SplitMode | LegacySplitMode {
+  return isSplitMode(value) || value === "by-family";
+}
+
+/**
+ * Criterio marcado en pantalla, guardado en un borrador o archivo. "Por
+ * familia" ya no existe: se pasa al criterio por defecto. undefined: inválido.
+ */
+export function readStoredSelectedMode(value: unknown): SplitMode | undefined {
+  if (isSplitMode(value)) return value;
+  if (value === "by-family") return DEFAULT_SPLIT_MODE;
+  return undefined;
+}
+
+/**
+ * Criterio confirmado. Si era "por familia", queda sin confirmar (null) para
+ * que el grupo vuelva a elegir cómo pagan los menores. undefined: inválido.
+ */
+export function readStoredSplitMode(value: unknown): SplitMode | null | undefined {
+  if (value === null) return null;
+  if (isSplitMode(value)) return value;
+  if (value === "by-family") return null;
+  return undefined;
 }
 
 export function isValidDate(value: unknown): value is string {
@@ -77,7 +103,7 @@ function hasComposition(value: Record<string, unknown>): boolean {
 export function isValidFamily(value: unknown): value is StoredFamily {
   if (!isRecord(value)) return false;
 
-  const { id, name, paidAmount, items, notes } = value;
+  const { id, name, paidAmount, items, notes, paysOwnShare } = value;
 
   if (typeof id !== "string" || id.trim() === "") return false;
   if (typeof name !== "string" || name.trim() === "") return false;
@@ -93,6 +119,7 @@ export function isValidFamily(value: unknown): value is StoredFamily {
   }
   // `notes` era el detalle libre previo al desglose por ítems.
   if (notes !== undefined && typeof notes !== "string") return false;
+  if (paysOwnShare !== undefined && typeof paysOwnShare !== "boolean") return false;
 
   return true;
 }
@@ -111,14 +138,24 @@ function toComposition(family: StoredFamily): Pick<Family, "adults" | "minors"> 
 /**
  * Deja una familia ya validada en la forma que espera la app:
  * - adultos y menores explícitos (migra el formato anterior);
- * - una familia sin adultos no aporta: monto 0 y sin desglose;
+ * - `paysOwnShare` solo en menores solos que pagan su parte;
+ * - menores solos que no pagan su parte no aportan: monto 0 y sin desglose;
  * - si hay desglose, el total es su suma (nunca se confía en el guardado);
  * - una `notes` de versiones anteriores pasa a ser el único ítem, con el total.
  */
 export function normalizeFamily(family: StoredFamily): Family {
   const { id, name, paidAmount, items } = family;
   const notes = (family as { notes?: string }).notes;
-  const base: Family = { id, name, ...toComposition(family), paidAmount };
+  const composition = toComposition(family);
+  const paysOwnShare =
+    isSoloMinorFamily(composition) && (family as { paysOwnShare?: boolean }).paysOwnShare === true;
+  const base: Family = {
+    id,
+    name,
+    ...composition,
+    ...(paysOwnShare ? { paysOwnShare: true } : {}),
+    paidAmount,
+  };
 
   if (isGuestFamily(base)) return { ...base, paidAmount: 0 };
 
