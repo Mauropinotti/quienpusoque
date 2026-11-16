@@ -198,6 +198,20 @@ Mismo instrumental, contra la versión anterior de esta rama:
   resultados. Las vistas previas de cada respuesta sobre menores se calculan
   una vez por lista de familias (`useMemo`).
 
+### V1.3: porciones, sin sugerencia ni "por familia"
+
+| Ruta | JS inicial | JS después del load |
+|---|---:|---:|
+| `/calcular` V1.2 | 168,0 KB | 25,4 KB |
+| **`/calcular` V1.3** | **168,1 KB** | **24,1 KB** (−1,3 KB) |
+| landing `/` | 159,3 KB (sin cambios, 0 KB propios) | 12,9 KB |
+
+- Se quitaron el motor de recomendación (`recommendSplitMode`,
+  `calculateModeImpact`) y sus componentes: el paso 3 pesa menos aunque ahora
+  compara tres opciones.
+- La comparación y las vistas previas de cada opción se calculan una vez por
+  lista de familias (`useMemo`).
+
 ## Experimentos descartados
 
 | Experimento | Resultado | Decisión |

@@ -64,15 +64,14 @@ function snapshot(overrides: Partial<EventSnapshot> = {}): EventSnapshot {
     currency: "ARS",
     createdAt: NOW,
     splitMode: null,
-    selectedMode: "by-family",
-    recommendationAccepted: null,
+    selectedMode: "by-person",
     families: DEMO_FAMILIES,
     ...overrides,
   };
 }
 
 function fileText(event: unknown, extra: Record<string, unknown> = {}): string {
-  return JSON.stringify({ format: EVENT_FILE_FORMAT, version: 2, exportedAt: NOW, event, ...extra });
+  return JSON.stringify({ format: EVENT_FILE_FORMAT, version: 3, exportedAt: NOW, event, ...extra });
 }
 
 describe("contributions", () => {
@@ -284,7 +283,6 @@ describe("storage: familias con desglose", () => {
         families: [{ ...base, paidAmount: 3000, notes: "Bebidas" }],
         selectedMode: "by-family",
         splitMode: null,
-        recommendationAccepted: null,
         updatedAt: NOW,
       })
     );
@@ -294,13 +292,13 @@ describe("storage: familias con desglose", () => {
 });
 
 describe("salidas con el desglose", () => {
-  const settlement = deriveSettlement(DEMO_FAMILIES, "ARS", "by-family")!;
+  const settlement = deriveSettlement(DEMO_FAMILIES, "ARS", "by-person")!;
 
   it("WhatsApp muestra lo que puso cada uno, cosa por cosa", () => {
     const text = generateWhatsappText({
       eventName: "Asado del sábado",
       currency: "ARS",
-      splitMode: "by-family",
+      splitMode: "by-person",
       families: DEMO_FAMILIES,
       breakdown: settlement.breakdown,
       balances: settlement.balances,
@@ -330,9 +328,9 @@ describe("salidas con el desglose", () => {
     const text = generateWhatsappText({
       eventName: "Asado",
       currency: "ARS",
-      splitMode: "by-family",
+      splitMode: "by-person",
       families: [],
-      breakdown: calculateShareBreakdown([], 0, "by-family"),
+      breakdown: calculateShareBreakdown([], 0, "by-person"),
       balances: [],
       transfers: [],
     });
@@ -345,12 +343,11 @@ describe("salidas con el desglose", () => {
       eventName: "Asado del sábado",
       currency: "ARS",
       generatedAt: new Date(NOW),
-      splitMode: "by-family",
+      splitMode: "by-person",
       families: DEMO_FAMILIES,
       balances: settlement.balances,
       transfers: settlement.transfers,
       breakdown: settlement.breakdown,
-      recommendation: null,
     });
     const content = doc.output();
 
@@ -362,12 +359,12 @@ describe("salidas con el desglose", () => {
 
 describe("exportar e importar el cálculo", () => {
   it("lo exportado se importa igual", () => {
-    const original = snapshot({ splitMode: "by-person", selectedMode: "by-person", recommendationAccepted: false });
+    const original = snapshot({ splitMode: "by-person-minors-half", selectedMode: "by-person-minors-half" });
     const text = serializeEventExportFile(buildEventExportFile(original, NOW));
     const result = parseEventExportFile(text);
 
     expect(result).toEqual({ ok: true, event: original });
-    expect(JSON.parse(text)).toMatchObject({ format: "quien-puso-que/calculo", version: 2, exportedAt: NOW });
+    expect(JSON.parse(text)).toMatchObject({ format: "quien-puso-que/calculo", version: 3, exportedAt: NOW });
   });
 
   it("arma el snapshot desde el estado del flujo", () => {
@@ -393,7 +390,7 @@ describe("exportar e importar el cálculo", () => {
       ok: false,
       error: IMPORT_ERRORS.notAnEventFile,
     });
-    expect(parseEventExportFile(fileText(snapshot(), { version: 3 }))).toEqual({
+    expect(parseEventExportFile(fileText(snapshot(), { version: 4 }))).toEqual({
       ok: false,
       error: IMPORT_ERRORS.newerVersion,
     });
@@ -440,19 +437,18 @@ describe("exportar e importar el cálculo", () => {
       step: "results" as const,
       savedClosedEventId: "viejo",
     };
-    const imported = snapshot({ splitMode: "by-person", selectedMode: "by-person", recommendationAccepted: true });
+    const imported = snapshot({ splitMode: "by-person-minors-zero", selectedMode: "by-person-minors-zero" });
     const next = eventFlowReducer(current, { type: "event-imported", event: imported });
 
     expect(next.step).toBe("families");
     expect(next.eventData).toEqual({
       eventName: "Asado del sábado",
       currency: "ARS",
-      splitMode: "by-person",
+      splitMode: "by-person-minors-zero",
       families: DEMO_FAMILIES,
     });
     expect(next.createdAt).toBe(NOW);
-    expect(next.selectedMode).toBe("by-person");
-    expect(next.recommendationAccepted).toBe(true);
+    expect(next.selectedMode).toBe("by-person-minors-zero");
     expect(next.savedClosedEventId).toBeNull();
     expect(next.ticketPhoto).toBeNull();
 

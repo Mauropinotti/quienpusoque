@@ -53,12 +53,13 @@ export async function setPeople(form: Locator, kind: "adultos" | "menores", targ
 
 export async function addFamily(
   page: Page,
-  family: { name: string; adults: number; minors?: number; items?: ContributionInput[] }
+  family: { name: string; adults: number; minors?: number; paysOwnShare?: boolean; items?: ContributionInput[] }
 ) {
   const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Agregar familia" }) });
   await form.getByLabel("Nombre", { exact: true }).fill(family.name);
   await setPeople(form, "adultos", family.adults);
   await setPeople(form, "menores", family.minors ?? 0);
+  if (family.paysOwnShare) await form.getByRole("checkbox", { name: /pagar su parte/ }).check();
   if (family.items) await fillContributions(form, family.items);
   await form.getByRole("button", { name: "Agregar familia" }).click();
 }

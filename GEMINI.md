@@ -36,11 +36,10 @@ Separación estricta entre lógica y UI:
 ## Reglas de negocio
 
 - Cada familia declara adultos y menores. Con al menos 1 adulto, aporta.
-- Familia sin adultos: no aporta y sus menores no cuentan.
-- `by-family`: divide el total entre familias habilitadas.
-- `by-person`: divide el total entre adultos + menores, todos iguales.
-- `by-person-minors-half`: cada menor paga 50% de la parte por persona; lo que no pagan se reparte entre los adultos.
-- `by-person-minors-zero`: divide el total solo entre los adultos.
+- Familia sin adultos (menores solos): entra solo si paga su parte (`paysOwnShare`); si no, invitada.
+- Un solo criterio, por porciones: adulto = 1; menor = 1 (`by-person`), ½ (`by-person-minors-half`) o 0 (`by-person-minors-zero`). Precio por porción = total ÷ porciones = lo que paga cada adulto.
+- Menores solos (sin adultos): entran solo con `paysOwnShare`; en las salidas transfiere "padre/madre o tutor encargado de X".
+- Sin sugerencia automática ni "por familia" desde V1.3.
 - `paidAmount = suma de items[].amount`: el total lo calcula la app, no se tipea.
 - `balance = paidAmount - expectedShare`.
 - Las transferencias salen de `FamilyBalance[]`, no de familias crudas.
@@ -92,7 +91,7 @@ Reglas:
 ## Documentación a actualizar
 
 - Fórmulas: `docs/calculation-model.md`.
-- Recomendación: `docs/recommendation-criteria.md`.
+- Reparto por porciones: `docs/calculation-model.md`.
 - UX: `docs/ux-flow.md`.
 - Rendimiento: `docs/performance.md`.
 - PDF: `docs/pdf-ticket.md`.

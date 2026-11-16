@@ -22,11 +22,11 @@
 - `components/calculator/CalculatorApp.tsx`: estado global (`useReducer`) y orquestación del flujo.
 - `components/landing/`: secciones de la landing.
 - `components/`: UI por paso y componentes base.
-- `lib/flow/`: reducer puro del flujo, derivados (`deriveEventInsights`, `deriveSettlement`), arranque y evento de ejemplo.
+- `lib/flow/`: reducer puro del flujo, derivados (`deriveEventInsights`, `deriveSettlement`, comparación de las 3 opciones), arranque y evento de ejemplo.
 - `lib/forms/`: validación del formulario de familias.
 - `lib/image/`: recorte y compresión de la foto del ticket.
 - `types/`: contratos TypeScript entre capas.
-- `lib/calculations/`: funciones puras de elegibilidad, recomendación, balances, transferencias y suma de lo que puso cada familia (`contributions.ts`).
+- `lib/calculations/`: funciones puras de elegibilidad, reparto por porciones (`calculateShareBreakdown.ts`), balances, transferencias y suma de lo que puso cada familia (`contributions.ts`).
 - `lib/formatting/`: formateo de moneda y porcentajes.
 - `lib/text/`: generación de texto para WhatsApp.
 - `lib/pdf/`: generación estructurada del ticket PDF final.
@@ -41,11 +41,10 @@
 
 - Cada familia declara `adults` y `minors` (0 a 20, al menos una persona).
 - Con al menos 1 adulto: aporta, `eligiblePersons = adults + minors`.
-- Sin adultos: no aporta, `eligiblePersons = 0`; sus menores no cuentan.
-- `by-family`: divide el total por familias que aportan.
-- `by-person`: divide el total por adultos + menores, todos iguales.
-- `by-person-minors-half`: cada menor paga 50% de la parte por persona; lo que no pagan se reparte en partes iguales entre los adultos.
-- `by-person-minors-zero`: divide el total solo entre los adultos.
+- Sin adultos: entra solo si `paysOwnShare` (paga su tutor); si no, invitada, `eligiblePersons = 0`.
+- Un solo criterio, por porciones: adulto = 1; menor = 1 (`by-person`), ½ (`by-person-minors-half`) o 0 (`by-person-minors-zero`). Precio por porción = total ÷ porciones = lo que paga cada adulto.
+- Menores solos (sin adultos): entran solo con `paysOwnShare`; en las salidas transfiere "padre/madre o tutor encargado de X".
+- Sin sugerencia automática ni "por familia" desde V1.3.
 - Los pasos del reparto (`SplitBreakdown`) se redondean a centavos uno por uno y se muestran iguales en ticket, PDF y WhatsApp (`lib/text/describeSplit.ts`).
 - `balance = paidAmount - expectedShare`.
 - `paidAmount = suma de items[].amount`: el total lo calcula la app (`lib/calculations/contributions.ts`), nunca se tipea ni se confía en uno guardado.
@@ -103,7 +102,7 @@ Reglas:
 ## Documentación a actualizar ante cambios
 
 - Fórmulas: `README.md`, `docs/calculation-model.md`, `docs/examples.md`.
-- Recomendación: `README.md`, `docs/recommendation-criteria.md`.
+- Reparto por porciones: `README.md`, `docs/calculation-model.md`, `docs/examples.md`.
 - Flujo o UI: `README.md`, `docs/ux-flow.md`.
 - Rendimiento: `docs/performance.md`.
 - Storage o formato del archivo exportado: `README.md`, `docs/ux-flow.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`.

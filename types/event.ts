@@ -1,6 +1,5 @@
-import type { Family, SplitMode } from "./family";
+import type { Family, LegacySplitMode, SplitMode } from "./family";
 import type { FamilyBalance, Transfer } from "./calculation";
-import type { SplitRecommendation } from "./recommendation";
 
 export interface EventData {
   eventName: string;
@@ -15,11 +14,11 @@ export interface ClosedEvent {
   createdAt: string;
   closedAt: string;
   totalAmount: number;
-  splitModeUsed: SplitMode;
+  /** Las cuentas cerradas antes de V1.3 pueden haber usado "por familia". */
+  splitModeUsed: SplitMode | LegacySplitMode;
   familiesSnapshot: Family[];
   balancesSnapshot: FamilyBalance[];
   transfersSnapshot: Transfer[];
-  recommendationSnapshot: SplitRecommendation | null;
   optionalNote?: string;
 }
 
@@ -32,15 +31,17 @@ export interface EventSnapshot {
   splitMode: SplitMode | null;
   /** Criterio marcado en pantalla, aunque no esté confirmado. */
   selectedMode: SplitMode;
-  recommendationAccepted: boolean | null;
   families: Family[];
 }
 
 /** Archivo `.json` que baja "Exportar cálculo" y lee "Importar cálculo". */
 export interface EventExportFile {
   format: "quien-puso-que/calculo";
-  /** 2: familias con adultos y menores. 1: con integrantes (se sigue leyendo). */
-  version: 2;
+  /**
+   * 3: solo criterios por persona y menores solos que pagan su parte.
+   * 2: familias con adultos y menores. 1: con integrantes. Las tres se leen.
+   */
+  version: 3;
   exportedAt: string;
   event: EventSnapshot;
 }

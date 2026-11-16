@@ -6,6 +6,7 @@ import type { FamilyTicketDetail } from "@/lib/flow/ticketDetails";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
 import {
   SPLIT_MODE_LABEL,
+  describePayer,
   describeSplitSteps,
   describeUnitShares,
 } from "@/lib/text/describeSplit";
@@ -21,6 +22,8 @@ interface SettlementTicketProps {
   settlement: Settlement;
   /** Composición, lo que puso y la cuenta de cada familia, por id (ver `buildFamilyTicketDetails`). */
   details?: ReadonlyMap<string, FamilyTicketDetail>;
+  /** Menores que vinieron solos: en las transferencias aparece su tutor. */
+  soloMinorIds?: ReadonlySet<string>;
   /** "preview": quién puso + transferencias (landing). "full": balances completos. */
   variant?: "preview" | "full";
   dateLabel?: string;
@@ -30,12 +33,14 @@ interface SettlementTicketProps {
 }
 
 const NO_DETAILS: ReadonlyMap<string, FamilyTicketDetail> = new Map();
+const NO_SOLO_MINORS: ReadonlySet<string> = new Set();
 
 export function SettlementTicket({
   eventName,
   currency,
   settlement,
   details = NO_DETAILS,
+  soloMinorIds = NO_SOLO_MINORS,
   variant = "full",
   dateLabel,
   ticketNumber = "0001",
@@ -103,7 +108,11 @@ export function SettlementTicket({
 
         <Divider />
 
-        <TransferList transfers={settlement.transfers} currency={currency} />
+        <TransferList
+          transfers={settlement.transfers}
+          soloMinorIds={soloMinorIds}
+          currency={currency}
+        />
 
         <footer className="mt-6 text-center">
           <div
@@ -233,11 +242,16 @@ function BalanceList({ balances, details, currency }: ListProps) {
               {detail?.composition && (
                 <p className="mt-0.5 text-xs font-bold text-ink-soft">{detail.composition}</p>
               )}
+              {detail?.guardianNote && (
+                <p className="mt-1 inline-flex rounded-full border-[1.5px] border-ink bg-mustard-soft px-2 py-0.5 text-[11px] font-bold">
+                  Menor · {detail.guardianNote}
+                </p>
+              )}
               {items.length > 0 && <ContributionLines items={items} currency={currency} />}
               <p className={`font-mono text-xs text-muted ${items.length > 0 ? "mt-1.5" : "mt-0.5"}`}>
                 {balance.isEligibleToPay
                   ? `puso ${formatMoney(balance.paidAmount, currency)} · le tocaba ${formatMoney(balance.expectedShare, currency)}`
-                  : "sin adultos: no aporta ni entra en el reparto"}
+                  : "menor solo invitado: no paga ni entra en el reparto"}
               </p>
               {detail?.shareFormula && (
                 <p className="font-mono text-xs text-muted" data-testid="ticket-share-formula">
@@ -254,9 +268,11 @@ function BalanceList({ balances, details, currency }: ListProps) {
 
 function TransferList({
   transfers,
+  soloMinorIds,
   currency,
 }: {
   transfers: Transfer[];
+  soloMinorIds: ReadonlySet<string>;
   currency: string;
 }) {
   if (transfers.length === 0) {
@@ -281,11 +297,16 @@ function TransferList({
             <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ink font-mono text-xs font-bold text-paper">
               {index + 1}
             </span>
+            {/* Un menor que vino solo no transfiere: lo hace su tutor. */}
             <p className="min-w-0 flex-1 text-sm leading-tight">
-              <span className="font-bold">{transfer.fromFamilyName}</span>
+              <span className="font-bold">
+                {describePayer(transfer.fromFamilyId, transfer.fromFamilyName, soloMinorIds)}
+              </span>
               <ArrowRightIcon className="mx-1 inline-block align-[-2px] text-ember-text" />
               <span className="sr-only"> le transfiere a </span>
-              <span className="font-bold">{transfer.toFamilyName}</span>
+              <span className="font-bold">
+                {describePayer(transfer.toFamilyId, transfer.toFamilyName, soloMinorIds)}
+              </span>
             </p>
             <span className="tabular shrink-0 font-mono text-base font-black">
               {formatMoney(transfer.amount, currency)}

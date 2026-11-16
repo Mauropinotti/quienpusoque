@@ -4,7 +4,7 @@ import { FLOW_STEPS, type FlowStep } from "@/lib/flow/eventFlow";
 const LABELS: Record<FlowStep, string> = {
   setup: "Evento",
   families: "Familias",
-  recommendation: "Criterio",
+  criterion: "Criterio",
   results: "Ticket",
 };
 

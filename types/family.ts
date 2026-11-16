@@ -1,19 +1,19 @@
 /**
- * Criterio de reparto.
- * - `by-family`: partes iguales por familia que aporta.
- * - `by-person`: partes iguales por persona; los menores pagan igual que los adultos.
- * - `by-person-minors-half`: los menores pagan el 50% de la parte por persona y
- *   lo que dejan de pagar se reparte en partes iguales entre los adultos.
+ * Criterio de reparto: siempre por persona; cambia cuánto pagan los menores.
+ * - `by-person`: menores al 100%, todos pagan una parte igual.
+ * - `by-person-minors-half`: cada menor paga el 50% de la parte por persona.
+ *   La otra mitad la cubren los adultos de su propia familia; la de los
+ *   menores que vinieron solos (y pagan su parte) se reparte entre todos los
+ *   adultos.
  * - `by-person-minors-zero`: los menores no pagan; el total se divide entre los adultos.
  */
 export type SplitMode =
-  | "by-family"
   | "by-person"
   | "by-person-minors-half"
   | "by-person-minors-zero";
 
-/** Lo que compara la recomendación: por familia o por persona. */
-export type SplitBasis = "by-family" | "by-person";
+/** Criterio de versiones anteriores (hasta V1.2). Solo aparece en el historial. */
+export type LegacySplitMode = "by-family";
 
 /** Una cosa que puso una familia: "carne" $ 10.000, "hielo" $ 2.000. */
 export interface ContributionItem {
@@ -37,10 +37,16 @@ export interface Family {
   paidAmount: number;
   /** Desglose de lo que puso. Ausente: solo se conoce el total. */
   items?: ContributionItem[];
+  /**
+   * Solo para familias sin adultos (menores que vinieron solos): true si el
+   * menor paga su parte, a través de su padre, madre o tutor. Si no, queda
+   * invitado y no entra en la cuenta.
+   */
+  paysOwnShare?: boolean;
 }
 
 export interface FamilyWithEligibility extends Family {
-  /** Tiene al menos un adulto. */
+  /** Entra en la cuenta: tiene adultos, o es un menor solo que paga su parte. */
   isEligibleToPay: boolean;
   /** Personas que entran en la cuenta: adultos + menores si aporta, 0 si no. */
   eligiblePersons: number;

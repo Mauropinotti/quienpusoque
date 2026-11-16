@@ -3,8 +3,9 @@ import type { Family, SplitMode } from "@/types/family";
 import { buildEventFileName } from "@/lib/formatting/fileName";
 import {
   isRecord,
-  isSplitMode,
   isValidDate,
+  readStoredSelectedMode,
+  readStoredSplitMode,
   isValidFamily,
   normalizeFamily,
 } from "@/lib/storage/validators";
@@ -14,9 +15,13 @@ import {
 // el archivo lo guarda y lo elige el usuario; la app no sube nada.
 
 export const EVENT_FILE_FORMAT: EventExportFile["format"] = "quien-puso-que/calculo";
-export const EVENT_FILE_VERSION: EventExportFile["version"] = 2;
-/** Versiones que se pueden importar. La 1 guardaba integrantes sin separar adultos y menores. */
-const READABLE_FILE_VERSIONS = new Set([1, 2]);
+export const EVENT_FILE_VERSION: EventExportFile["version"] = 3;
+/**
+ * Versiones que se pueden importar. La 1 guardaba integrantes sin separar
+ * adultos y menores; la 1 y la 2 podían traer "por familia" y la aceptación
+ * de la sugerencia, que ya no existen.
+ */
+const READABLE_FILE_VERSIONS = new Set([1, 2, 3]);
 export const EVENT_FILE_EXTENSION = "json";
 export const EVENT_FILE_MIME_TYPE = "application/json";
 export const EVENT_FILE_ACCEPT = ".json,application/json";
@@ -40,14 +45,12 @@ export type EventImportResult =
 interface SnapshotSource {
   eventData: EventData;
   selectedMode: SplitMode;
-  recommendationAccepted: boolean | null;
   createdAt: string;
 }
 
 export function buildEventSnapshot({
   eventData,
   selectedMode,
-  recommendationAccepted,
   createdAt,
 }: SnapshotSource): EventSnapshot {
   return {
@@ -56,7 +59,6 @@ export function buildEventSnapshot({
     createdAt,
     splitMode: eventData.splitMode,
     selectedMode,
-    recommendationAccepted,
     families: eventData.families,
   };
 }
@@ -113,18 +115,17 @@ function parseSnapshot(value: unknown): EventSnapshot | null {
     createdAt,
     splitMode,
     selectedMode,
-    recommendationAccepted,
     families,
   } = value;
+
+  const storedSplitMode = readStoredSplitMode(splitMode);
+  const storedSelectedMode = readStoredSelectedMode(selectedMode);
 
   if (typeof eventName !== "string") return null;
   if (!isSupportedCurrency(currency)) return null;
   if (!isValidDate(createdAt)) return null;
-  if (splitMode !== null && !isSplitMode(splitMode)) return null;
-  if (!isSplitMode(selectedMode)) return null;
-  if (recommendationAccepted !== null && typeof recommendationAccepted !== "boolean") {
-    return null;
-  }
+  if (storedSplitMode === undefined) return null;
+  if (storedSelectedMode === undefined) return null;
 
   const parsedFamilies = parseFamilies(families);
   if (!parsedFamilies) return null;
@@ -133,9 +134,8 @@ function parseSnapshot(value: unknown): EventSnapshot | null {
     eventName,
     currency,
     createdAt,
-    splitMode,
-    selectedMode,
-    recommendationAccepted,
+    splitMode: storedSplitMode,
+    selectedMode: storedSelectedMode,
     families: parsedFamilies,
   };
 }

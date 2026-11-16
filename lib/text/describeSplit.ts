@@ -1,6 +1,10 @@
-import type { SplitBreakdown } from "@/types/calculation";
-import type { Family, SplitMode } from "@/types/family";
-import { isGuestFamily } from "@/lib/calculations/eligibility";
+import type { SplitBreakdown, Transfer } from "@/types/calculation";
+import type { Family, LegacySplitMode, SplitMode } from "@/types/family";
+import {
+  isGuestFamily,
+  isPayingSoloMinorFamily,
+  isSoloMinorFamily,
+} from "@/lib/calculations/eligibility";
 
 // Textos del reparto, compartidos por el ticket en pantalla, el WhatsApp y el
 // PDF. Solo describen: los números salen de `calculateShareBreakdown`.
@@ -8,18 +12,21 @@ import { isGuestFamily } from "@/lib/calculations/eligibility";
 type Money = (amount: number) => string;
 
 export const SPLIT_MODE_LABEL: Record<SplitMode, string> = {
-  "by-family": "por familia",
-  "by-person": "por persona, todos iguales",
+  "by-person": "por persona, menores al 100%",
   "by-person-minors-half": "por persona, menores al 50%",
-  "by-person-minors-zero": "por persona, menores no pagan",
+  "by-person-minors-zero": "por persona, menores al 0%",
 };
+
+/** Etiqueta para cualquier criterio, incluido "por familia" del historial viejo. */
+export function splitModeLabel(mode: SplitMode | LegacySplitMode): string {
+  return mode === "by-family" ? "por familia" : SPLIT_MODE_LABEL[mode];
+}
 
 /** Una línea que resume la regla, para notas al pie. */
 export const SPLIT_MODE_RULE: Record<SplitMode, string> = {
-  "by-family": "Cada familia que aporta pone una parte igual del gasto total.",
-  "by-person": "Cada persona (adulto o menor) pone una parte igual del gasto total.",
+  "by-person": "Todos, adultos y menores, pagan una parte igual del gasto total.",
   "by-person-minors-half":
-    "Cada menor paga el 50% de la parte por persona; lo que no pagan los menores se reparte en partes iguales entre los adultos.",
+    "Cada adulto cuenta una porción y cada menor media: un menor paga la mitad que un adulto. El total se divide por la cantidad de porciones.",
   "by-person-minors-zero": "El gasto total se divide solo entre los adultos; los menores no pagan.",
 };
 
@@ -31,18 +38,87 @@ export const adultsLabel = (count: number) => countLabel(count, "adulto", "adult
 export const minorsLabel = (count: number) => countLabel(count, "menor", "menores");
 const peopleLabel = (count: number) => countLabel(count, "persona", "personas");
 
-/** "2 adultos y 1 menor", "1 adulto", "2 menores". */
+/** Quien paga o cobra por un menor que vino solo. */
+export const GUARDIAN_LABEL = "padre/madre o tutor encargado de";
+
+export function guardianOf(name: string): string {
+  return `${GUARDIAN_LABEL} ${name}`;
+}
+
+/** "2 adultos y 1 menor", "1 adulto", "1 menor (vino solo)". */
 export function describeComposition(family: Pick<Family, "adults" | "minors">): string {
-  const parts: string[] = [];
-  if (family.adults > 0) parts.push(adultsLabel(family.adults));
+  if (isSoloMinorFamily(family)) {
+    return `${minorsLabel(family.minors)} (${family.minors === 1 ? "vino solo" : "vinieron solos"})`;
+  }
+  const parts = [adultsLabel(family.adults)];
   if (family.minors > 0) parts.push(minorsLabel(family.minors));
   return parts.join(" y ");
 }
 
-/** "7 adultos + 3 menores = 10 personas", o "6 personas" si no hay menores. */
-function describePeople(b: SplitBreakdown): string {
-  if (b.minors === 0) return `${peopleLabel(b.adults)}, sin menores`;
-  return `${adultsLabel(b.adults)} + ${minorsLabel(b.minors)} = ${peopleLabel(b.adults + b.minors)}`;
+/** Para los menores solos que pagan su parte: quién paga en realidad. */
+export function describeGuardianNote(family: Family): string | null {
+  if (!isPayingSoloMinorFamily(family)) return null;
+  return "paga su parte a través de su padre, madre o tutor";
+}
+
+// ── Transferencias ────────────────────────────────────────────────────────────
+
+/** Ids de familias de menores solos: en las transferencias aparece su tutor. */
+export function getSoloMinorIds(families: readonly Family[]): Set<string> {
+  return new Set(families.filter(isPayingSoloMinorFamily).map((family) => family.id));
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** Quien transfiere: "Los García" o "Padre/madre o tutor encargado de Juli". */
+export function describePayer(id: string, name: string, soloMinorIds: ReadonlySet<string>): string {
+  return soloMinorIds.has(id) ? capitalize(guardianOf(name)) : name;
+}
+
+/** A quién: "a Los García" o "al padre/madre o tutor encargado de Juli". */
+export function describeReceiver(id: string, name: string, soloMinorIds: ReadonlySet<string>): string {
+  return soloMinorIds.has(id) ? `al ${guardianOf(name)}` : `a ${name}`;
+}
+
+/** "Padre/madre o tutor encargado de Juli le transfiere $ 750 a Los Pérez". */
+export function describeTransfer(
+  transfer: Transfer,
+  soloMinorIds: ReadonlySet<string>,
+  money: Money
+): string {
+  const from = describePayer(transfer.fromFamilyId, transfer.fromFamilyName, soloMinorIds);
+  const to = describeReceiver(transfer.toFamilyId, transfer.toFamilyName, soloMinorIds);
+  return `${from} le transfiere ${money(transfer.amount)} ${to}`;
+}
+
+// ── Pasos del cálculo ─────────────────────────────────────────────────────────
+
+const portionsFormatter = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
+
+/** 6,5 porciones. */
+export function formatPortions(portions: number): string {
+  return portionsFormatter.format(portions);
+}
+
+/** "1 de los menores vino solo y paga su parte…", si corresponde. */
+function describeSoloMinors(b: SplitBreakdown): string[] {
+  if (b.soloMinors === 0) return [];
+  return [
+    b.soloMinors === 1
+      ? "1 de los menores vino solo y paga su parte (a través de su padre, madre o tutor)"
+      : `${b.soloMinors} de los menores vinieron solos y pagan su parte (a través de su padre, madre o tutor)`,
+  ];
+}
+
+/** "5 adultos + 3 menores = 8 personas", o "5 adultos, sin menores". */
+function describePeople(b: SplitBreakdown): string[] {
+  if (b.minors === 0) return [`${adultsLabel(b.adults)}, sin menores`];
+  return [
+    `${adultsLabel(b.adults)} + ${minorsLabel(b.minors)} = ${peopleLabel(b.adults + b.minors)}`,
+    ...describeSoloMinors(b),
+  ];
 }
 
 /**
@@ -53,51 +129,44 @@ export function describeSplitSteps(b: SplitBreakdown, money: Money): string[] {
   if (b.contributingFamilies === 0 || b.adults === 0) return [];
 
   switch (b.splitMode) {
-    case "by-family":
-      return [
-        `${money(b.totalAmount)} ÷ ${countLabel(b.contributingFamilies, "familia", "familias")} = ${money(b.familyShare)} por familia`,
-      ];
-
     case "by-person":
       return [
-        describePeople(b),
-        `${money(b.totalAmount)} ÷ ${peopleLabel(b.adults + b.minors)} = ${money(b.personShare)} por persona`,
+        ...describePeople(b),
+        `${money(b.totalAmount)} ÷ ${peopleLabel(b.adults + b.minors)} = ${money(b.adultShare)} por persona`,
       ];
 
     case "by-person-minors-zero":
       return [
         `${money(b.totalAmount)} ÷ ${adultsLabel(b.adults)} = ${money(b.adultShare)} por adulto`,
-        b.minors > 0 ? `${b.minors === 1 ? "El menor no paga" : `Los ${b.minors} menores no pagan`}` : "No hay menores",
+        b.minors === 0
+          ? "No hay menores"
+          : b.minors === 1
+            ? "El menor no paga"
+            : `Los ${b.minors} menores no pagan`,
       ];
 
-    case "by-person-minors-half": {
+    case "by-person-minors-half":
       if (b.minors === 0) {
         return [
-          describePeople(b),
-          `${money(b.totalAmount)} ÷ ${peopleLabel(b.adults)} = ${money(b.personShare)} por persona`,
+          ...describePeople(b),
+          `${money(b.totalAmount)} ÷ ${peopleLabel(b.adults)} = ${money(b.adultShare)} por persona`,
           "No hay menores: todos pagan igual",
         ];
       }
-      const unpaidPerMinor = Math.round((b.personShare - b.minorShare) * 100) / 100;
       return [
-        describePeople(b),
-        `Parte igual: ${money(b.totalAmount)} ÷ ${b.adults + b.minors} = ${money(b.personShare)} por persona`,
-        `Cada menor paga el 50%: ${money(b.minorShare)}`,
-        `Lo que no pagan los menores: ${b.minors} × ${money(unpaidPerMinor)} = ${money(b.minorsUnpaid)}`,
-        `Se reparte entre ${b.adults === 1 ? "el adulto" : `los ${b.adults} adultos`}: ${money(b.minorsUnpaid)} ÷ ${b.adults} = ${money(b.adultSurcharge)} más cada uno`,
-        `Cada adulto paga: ${money(b.personShare)} + ${money(b.adultSurcharge)} = ${money(b.adultShare)}`,
+        `${adultsLabel(b.adults)} × 1 + ${minorsLabel(b.minors)} × ½ = ${formatPortions(b.portions)} porciones`,
+        ...describeSoloMinors(b),
+        `${money(b.totalAmount)} ÷ ${formatPortions(b.portions)} porciones = ${money(b.adultShare)} por porción: lo que paga cada adulto`,
+        `Cada menor paga media porción: ${money(b.adultShare)} ÷ 2 = ${money(b.minorShare)}`,
       ];
-    }
   }
 }
 
-/** "$ 1.750 c/ adulto · $ 750 c/ menor": la parte unitaria en una línea. */
+/** "$ 1.846,15 c/ adulto · $ 923,08 c/ menor": la parte unitaria en una línea. */
 export function describeUnitShares(b: SplitBreakdown, money: Money): string {
   switch (b.splitMode) {
-    case "by-family":
-      return `${money(b.familyShare)} c/ familia`;
     case "by-person":
-      return `${money(b.personShare)} c/ persona`;
+      return `${money(b.adultShare)} c/ persona`;
     case "by-person-minors-zero":
       return b.minors > 0
         ? `${money(b.adultShare)} c/ adulto · menores sin cargo`
@@ -110,39 +179,26 @@ export function describeUnitShares(b: SplitBreakdown, money: Money): string {
 }
 
 /**
- * Cuenta de lo que le toca a una familia: "2 adultos × $ 1.750 + 1 menor ×
- * $ 750". null cuando no aporta o el criterio es por familia (es la misma
- * parte para todas y ya está en los pasos).
+ * Cuenta de lo que le toca a una familia: "1 adulto × $ 1.846,15 + 1 menor ×
+ * $ 923,08". null si no entra en la cuenta.
  */
 export function describeFamilyShare(
-  family: Pick<Family, "adults" | "minors">,
+  family: Family,
   b: SplitBreakdown,
   money: Money
 ): string | null {
-  if (isGuestFamily(family)) return null;
+  if (isGuestFamily(family) || b.adults === 0) return null;
 
-  switch (b.splitMode) {
-    case "by-family":
-      return null;
-
-    case "by-person":
-      return `${peopleLabel(family.adults + family.minors)} × ${money(b.personShare)}`;
-
-    case "by-person-minors-zero": {
-      const adults = `${adultsLabel(family.adults)} × ${money(b.adultShare)}`;
-      return family.minors > 0 ? `${adults} + ${minorsLabel(family.minors)} × ${money(0)}` : adults;
-    }
-
-    case "by-person-minors-half": {
-      // Sin menores en el grupo, todos pagan lo mismo.
-      if (b.minors === 0) {
-        return `${peopleLabel(family.adults + family.minors)} × ${money(b.adultShare)}`;
-      }
-      const parts = [`${adultsLabel(family.adults)} × ${money(b.adultShare)}`];
-      if (family.minors > 0) parts.push(`${minorsLabel(family.minors)} × ${money(b.minorShare)}`);
-      return parts.join(" + ");
-    }
+  // Sin menores en el grupo (o todos iguales), basta con "N personas × $".
+  if (b.splitMode === "by-person" || b.minors === 0) {
+    return `${peopleLabel(family.adults + family.minors)} × ${money(b.adultShare)}`;
   }
+
+  const minorsPart = `${minorsLabel(family.minors)} × ${money(b.minorShare)}`;
+  if (isSoloMinorFamily(family)) return minorsPart;
+
+  const adultsPart = `${adultsLabel(family.adults)} × ${money(b.adultShare)}`;
+  return family.minors > 0 ? `${adultsPart} + ${minorsPart}` : adultsPart;
 }
 
 /** Cuenta de cada familia por id, para cruzar con los balances. */

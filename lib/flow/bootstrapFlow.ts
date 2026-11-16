@@ -55,7 +55,6 @@ export function bootstrapFlow(search: string, now: string): FlowBootstrap {
       storedFingerprint: getDraftFingerprint({
         eventData: state.eventData,
         selectedMode: state.selectedMode,
-        recommendationAccepted: state.recommendationAccepted,
         createdAt: state.createdAt,
       }),
       source: "draft",
@@ -68,7 +67,6 @@ export function bootstrapFlow(search: string, now: string): FlowBootstrap {
     storedFingerprint: getDraftFingerprint({
       eventData: state.eventData,
       selectedMode: state.selectedMode,
-      recommendationAccepted: state.recommendationAccepted,
       createdAt: state.createdAt,
     }),
     source: "empty",

@@ -1,6 +1,5 @@
 import type { FamilyBalance, SplitBreakdown, Transfer } from "./calculation";
 import type { Family, SplitMode } from "./family";
-import type { SplitRecommendation } from "./recommendation";
 
 export interface EventTicketPhoto {
   dataUrl: string;
@@ -20,6 +19,5 @@ export interface EventTicketPdfData {
   transfers: Transfer[];
   /** Los pasos del cálculo, para mostrarlos tal cual. */
   breakdown: SplitBreakdown;
-  recommendation: SplitRecommendation | null;
   photo?: EventTicketPhoto | null;
 }

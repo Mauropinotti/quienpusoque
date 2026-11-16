@@ -25,6 +25,8 @@ export interface FamilyFormValues {
   name: string;
   adults: number;
   minors: number;
+  /** Solo cuenta si no hay adultos: el menor paga su parte (a través de su tutor). */
+  paysOwnShare: boolean;
   items: ContributionRowValues[];
 }
 
@@ -56,6 +58,7 @@ export function emptyFamilyFormValues(): FamilyFormValues {
     name: "",
     adults: 2,
     minors: 0,
+    paysOwnShare: false,
     items: [contributionRow("1")],
   };
 }
@@ -72,12 +75,20 @@ export function familyToFormValues(family: Family): FamilyFormValues {
     name: family.name,
     adults: family.adults,
     minors: family.minors,
+    paysOwnShare: family.paysOwnShare === true,
     items,
   };
 }
 
-/** Sin adultos la familia no aporta: su monto queda fijo en 0. */
-export function isFamilyAmountLocked(values: Pick<FamilyFormValues, "adults" | "minors">): boolean {
+/** Menores solos: la app pregunta si pagan su parte (a través de su tutor). */
+export function asksIfMinorsPay(values: Pick<FamilyFormValues, "adults" | "minors">): boolean {
+  return values.adults === 0 && values.minors > 0;
+}
+
+/** Menores solos que no pagan su parte no aportan: su monto queda fijo en 0. */
+export function isFamilyAmountLocked(
+  values: Pick<FamilyFormValues, "adults" | "minors" | "paysOwnShare">
+): boolean {
   return isGuestFamily(values);
 }
 
@@ -199,6 +210,8 @@ export function parseFamilyForm(values: FamilyFormValues): FamilyFormResult {
       name: values.name.trim(),
       adults: values.adults,
       minors: values.minors,
+      // Solo tiene sentido sin adultos; si no, no se guarda.
+      paysOwnShare: asksIfMinorsPay(values) && values.paysOwnShare ? true : undefined,
       ...toContributionFields(items),
     },
   };

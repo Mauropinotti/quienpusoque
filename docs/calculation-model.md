@@ -19,6 +19,7 @@ Este documento describe las reglas canónicas de **¿Quién puso qué?**. Si una
 - `name`
 - `adults`: adultos (0 a 20)
 - `minors`: menores (0 a 20); al menos una persona en total
+- `paysOwnShare` (opcional): solo en familias sin adultos; el menor paga su parte a través de su padre, madre o tutor
 - `paidAmount`
 - `items` (opcional): desglose de lo que puso, `{ description, amount }[]`
 
@@ -73,96 +74,82 @@ se calcula antes de repartir (`lib/calculations/eligibility.ts`).
 | Condición | `isEligibleToPay` | `eligiblePersons` |
 |---|---:|---:|
 | `adults >= 1` | true | `adults + minors` |
-| `adults = 0` (solo menores) | false | 0 |
+| `adults = 0`, `paysOwnShare = true` (menores solos que pagan su parte) | true | `minors` |
+| `adults = 0`, sin `paysOwnShare` (menores solos invitados) | false | 0 |
 
-Una familia sin adultos es **invitada**: no aporta y sus menores no entran en
-ninguna cuenta. Queda con:
+Una familia invitada queda con:
 
 - `expectedShare = 0`
 - `balance = paidAmount`
 - `status = "guest"`
 
 Siempre tiene `paidAmount = 0` y no tiene desglose. El formulario bloquea el
-monto cuando no hay adultos, `validateFamily` rechaza otro valor con
-`GUEST_PAID_AMOUNT` y, al recuperar un borrador viejo o un archivo importado
-que lo traiga cargado, `normalizeFamily` lo pone en 0. Así ningún monto queda
-sin reintegrar.
+monto, `validateFamily` rechaza otro valor con `GUEST_PAID_AMOUNT` y, al
+recuperar un borrador viejo o un archivo importado que lo traiga cargado,
+`normalizeFamily` lo pone en 0.
 
-## Criterios
+Los menores solos que pagan su parte entran en la cuenta como cualquier
+menor (con su fracción de porción). Pueden cargar lo que pusieron. En el
+ticket, el PDF y el WhatsApp no figuran como quien transfiere o cobra: aparece
+"padre/madre o tutor encargado de {nombre}".
 
-`SplitMode` tiene cuatro valores. La recomendación elige la base (por familia
-o por persona); cuánto pagan los menores lo decide el grupo.
+Hace falta al menos un adulto entre las familias que entran en la cuenta; si
+no, `calculateBalances` devuelve `NO_ELIGIBLE_FAMILIES`.
 
-| `SplitMode` | En pantalla | Regla |
-|---|---|---|
-| `by-family` | Por familia | partes iguales por familia que aporta |
-| `by-person` | Por persona · igual que los adultos (100%) | partes iguales por persona, adultos y menores |
-| `by-person-minors-half` | Por persona · la mitad (50%) | cada menor paga la mitad de la parte por persona; lo que no pagan se reparte entre los adultos |
-| `by-person-minors-zero` | Por persona · no pagan (0%) | el total se divide entre los adultos |
+## Reparto por porciones
 
-En todas las fórmulas, `A` y `M` son los adultos y menores de las familias
-que aportan, `F` la cantidad de esas familias y `T` el gasto total.
+Desde V1.3 hay un solo criterio: **por persona, por porciones**. No hay
+sugerencia automática ni reparto "por familia". El grupo elige cuánto cuenta
+cada menor (`SplitMode`):
+
+| `SplitMode` | En pantalla | Porción de cada menor |
+|---|---|---:|
+| `by-person` | Igual que un adulto (100%) | 1 |
+| `by-person-minors-half` | La mitad (50%) | ½ |
+| `by-person-minors-zero` | No pagan (0%) | 0 |
+
+`A` y `M` son los adultos y menores que entran en la cuenta (incluidos los
+menores solos que pagan su parte) y `T` el gasto total.
+
+```text
+porciones          = A + M × fracción
+precio por porción = T / porciones          → lo que paga cada adulto (adultShare)
+cada menor paga    = precio × fracción      → minorShare
+cuota de la familia = adultos × adultShare + menores × minorShare
+```
 
 El cálculo vive en `lib/calculations/calculateShareBreakdown.ts` y devuelve un
-`SplitBreakdown` con cada paso. **Cada paso se redondea a centavos sobre los
-montos ya redondeados**, así la cuenta que se muestra en el ticket, el PDF y
-el WhatsApp cierra a la vista. Lo que le toca a una familia es
-`adults × adultShare + minors × minorShare` (o `familyShare` por familia).
+`SplitBreakdown` (`portions`, `adultShare`, `minorShare`, …). Cada paso se
+redondea a centavos, así la cuenta que se muestra en el ticket, el PDF y el
+WhatsApp cierra a la vista.
 
-### Por familia
+### Por qué porciones
 
-```text
-familyShare = T / F
-```
+Cualquier descuento para un menor lo pagan los demás: el total es fijo. Con
+porciones nadie "absorbe lo que no paga otro": todos pagan el mismo precio por
+porción, y un menor al 50% paga **exactamente la mitad** que un adulto.
 
-### Por persona, todos iguales (100%)
+- **1 adulto + 1 menor** (el caso que motivó el cambio) paga 1,5 porciones.
+- Cubrir el 50% del menor con los adultos de su propia familia daría lo mismo
+  que el 100%; repartirlo entre todos los adultos (regla de V1.2) dejaba al
+  menor pagando menos de la mitad que un adulto.
 
-```text
-personShare = T / (A + M)
-adultShare = minorShare = personShare
-```
+### Ejemplo
 
-### Por persona, menores al 50%
+$12.000. Los Pérez (2 adultos), Ana (1 adulta + 1 menor), Los Gómez (2
+adultos + 2 menores). Son 5 adultos y 3 menores.
 
-```text
-personShare    = T / (A + M)                 parte igual por persona
-minorShare     = personShare × 50%           lo que paga cada menor
-minorsUnpaid   = M × (personShare − minorShare)   lo que no pagan los menores
-adultSurcharge = minorsUnpaid / A            se reparte en partes iguales entre los adultos
-adultShare     = personShare + adultSurcharge
-```
+| | Los Pérez | Ana | Los Gómez |
+|---|---:|---:|---:|
+| 100%: 8 porciones, $1.500 c/u | 3.000 | 3.000 | 6.000 |
+| **50%: 6,5 porciones, $1.846,15 adulto, $923,08 menor** | 3.692,30 | **2.769,23** | 5.538,46 |
+| 0%: 5 porciones, $2.400 por adulto | 4.800 | 2.400 | 4.800 |
 
-Ejemplo (el del pedido): $12.000, 6 adultos y 2 menores.
+Si además vino Juli (1 menor sola) y paga su parte, al 50% son 7 porciones:
+$1.714,29 por adulto y $857,15 por menor; lo de Juli lo transfiere su padre,
+madre o tutor.
 
-```text
-personShare    = 12.000 / 8 = 1.500
-minorShare     = 750
-minorsUnpaid   = 2 × 750 = 1.500
-adultSurcharge = 1.500 / 6 = 250
-adultShare     = 1.500 + 250 = 1.750
-
-familia de 2 adultos y 1 menor = 2 × 1.750 + 1 × 750 = 4.250
-familia de 1 adulto            = 1.750
-control: 4.250 + 4.250 + 1.750 + 1.750 = 12.000
-```
-
-Ojo: no es lo mismo que contar a cada menor como media persona (eso daría
-12.000 / 7 = $1.714,29 por adulto y $857,14 por menor). Acá el menor paga la
-mitad de la parte igual y lo que falta lo absorben los adultos.
-
-### Por persona, menores no pagan (0%)
-
-```text
-adultShare = T / A
-minorShare = 0
-```
-
-Con el mismo ejemplo: 12.000 / 6 = 2.000 por adulto.
-
-### Sin menores
-
-Si no hay menores en las familias que aportan, las tres variantes por persona
-dan exactamente lo mismo.
+Sin menores, las tres opciones dan lo mismo.
 
 ## Balance
 
@@ -185,12 +172,12 @@ balance = paidAmount - expectedShare
 
 | Código | Caso |
 |---|---|
-| `NULL_SPLIT_MODE` | no hay criterio seleccionado |
+| `NULL_SPLIT_MODE` | no se eligió cómo pagan los menores |
 | `NO_FAMILIES` | no hay familias |
 | `MEMBERS_OUT_OF_RANGE` | adultos o menores fuera de 0 a 20, no enteros, o ninguna persona |
 | `NEGATIVE_PAID_AMOUNT` | monto negativo o no finito |
-| `GUEST_PAID_AMOUNT` | familia sin adultos con monto pagado mayor a 0 |
-| `NO_ELIGIBLE_FAMILIES` | ninguna familia puede aportar |
+| `GUEST_PAID_AMOUNT` | menores solos invitados con monto pagado mayor a 0 |
+| `NO_ELIGIBLE_FAMILIES` | ninguna familia con adultos en la cuenta |
 
 Gasto total cero no es error. Si todos pagaron $0, todos quedan equilibrados salvo invitados no aportantes.
 
@@ -202,7 +189,7 @@ Cada paso del reparto, las cuotas y los balances se redondean a 2 decimales:
 Math.round(n * 100) / 100
 ```
 
-Las transferencias se redondean luego a pesos enteros. Puede aparecer una discrepancia de redondeo de 0 o pocos pesos en casos no divisibles (por ejemplo, $10.000 con 2 adultos y 1 menor al 50% suman $10.000,01 de cuotas).
+Las transferencias se redondean luego a pesos enteros. Puede aparecer una discrepancia de redondeo de 0 o pocos pesos en casos no divisibles (por ejemplo, con Juli al 50% el ejemplo de arriba suma $12.000,05 de cuotas).
 
 ## Datos de versiones anteriores
 
@@ -218,6 +205,12 @@ con ese formato, `normalizeFamily` lo convierte:
 
 Así cualquier cuenta vieja da el mismo resultado que daba. Si había menores en
 una familia grande, se corrigen editando la familia.
+
+Hasta V1.2 existían el criterio `by-family` y una sugerencia automática. Un
+borrador o archivo que los traiga se lee igual: "por familia" queda sin
+confirmar (el grupo vuelve a elegir cómo pagan los menores) y la aceptación
+de la sugerencia se ignora. El historial conserva las cuentas cerradas "por
+familia" y las muestra con ese nombre.
 
 ## Transferencias
 
@@ -255,21 +248,19 @@ Familias `guest` y `balanced` no entran en transferencias.
 
 ## Ejemplo resumido
 
-Total: $16.000. Criterio: `by-family`. Familias elegibles: 4.
+El asado de ejemplo (`lib/flow/demoEvent.ts`): $16.000, 7 adultos y 3 menores
+en las familias que aportan; Los Martínez (1 menor solo, invitado) no entran.
+Menores al 100%: 10 porciones de $1.600.
 
-```text
-cuota = 16.000 / 4 = 4.000
-```
-
-| Familia | Pagó | Le tocaba | Balance | Estado |
-|---|---:|---:|---:|---|
-| Los García | $8.000 | $4.000 | +$4.000 | cobra |
-| Los Rodríguez | $3.000 | $4.000 | -$1.000 | paga |
-| Los López | $0 | $4.000 | -$4.000 | paga |
-| Los Martínez | $0 | $0 | $0 | no aporta |
-| Los Fernández | $5.000 | $4.000 | +$1.000 | cobra |
+| Familia | Composición | Pagó | Le tocaba | Balance | Estado |
+|---|---|---:|---:|---:|---|
+| Los García | 2 adultos y 2 menores | $8.000 | $6.400 | +$1.600 | cobra |
+| Los Rodríguez | 2 adultos | $3.000 | $3.200 | -$200 | paga |
+| Los López | 1 adulto | $0 | $1.600 | -$1.600 | paga |
+| Los Martínez | 1 menor (vino solo) | $0 | $0 | $0 | no aporta |
+| Los Fernández | 2 adultos y 1 menor | $5.000 | $4.800 | +$200 | cobra |
 
 Transferencias:
 
-- Los López le transfiere $4.000 a Los García.
-- Los Rodríguez le transfiere $1.000 a Los Fernández.
+- Los López le transfiere $1.600 a Los García.
+- Los Rodríguez le transfiere $200 a Los Fernández.

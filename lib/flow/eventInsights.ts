@@ -1,61 +1,68 @@
 import type { FamilyBalance, SplitBreakdown, Transfer } from "@/types/calculation";
 import type { Family, SplitMode } from "@/types/family";
-import type { SplitRecommendation } from "@/types/recommendation";
-import { computeAllEligibility } from "@/lib/calculations/eligibility";
+import {
+  computeAllEligibility,
+  isGuestFamily,
+  isSoloMinorFamily,
+} from "@/lib/calculations/eligibility";
 import { calculateBalances } from "@/lib/calculations/calculateBalances";
 import { calculateTransfers } from "@/lib/calculations/calculateTransfers";
-import { recommendSplitMode } from "@/lib/calculations/recommendSplitMode";
 import {
   calculateShareBreakdown,
   getFamilyShare,
 } from "@/lib/calculations/calculateShareBreakdown";
-import {
-  PERSON_SPLIT_MODES,
-  type PersonSplitMode,
-} from "@/lib/calculations/splitModes";
+import { SPLIT_MODES } from "@/lib/calculations/splitModes";
 
 export interface EventInsights {
   familyCount: number;
+  /** Familias que entran en la cuenta. */
   eligibleFamilyCount: number;
-  /** Adultos y menores de las familias que aportan. */
+  /** Adultos que entran en la cuenta. */
   adultCount: number;
-  minorCount: number;
+  /** Menores de familias con adultos. */
+  familyMinorCount: number;
+  /** Menores que vinieron solos y pagan su parte. */
+  soloMinorCount: number;
+  /** Menores que vinieron solos y no pagan (invitados). */
+  guestMinorCount: number;
   totalPaid: number;
-  /** Hace falta al menos 2 familias y 2 habilitadas para repartir. */
+  /** Hace falta al menos 2 familias en la cuenta y algún adulto para repartir. */
   canCalculate: boolean;
-  recommendation: SplitRecommendation | null;
 }
 
 /**
  * Todo lo que la UI necesita saber de la lista de familias, en una pasada.
- * Antes la página calculaba la elegibilidad dos veces por render y los
- * componentes sumaban totales por su cuenta.
  */
 export function deriveEventInsights(families: Family[]): EventInsights {
   const withEligibility = computeAllEligibility(families);
   let eligibleFamilyCount = 0;
   let adultCount = 0;
-  let minorCount = 0;
+  let familyMinorCount = 0;
+  let soloMinorCount = 0;
+  let guestMinorCount = 0;
   let totalPaid = 0;
 
   for (const family of withEligibility) {
-    if (family.isEligibleToPay) {
-      eligibleFamilyCount += 1;
-      adultCount += family.adults;
-      minorCount += family.minors;
-    }
     totalPaid += family.paidAmount;
+    if (isGuestFamily(family)) {
+      guestMinorCount += family.minors;
+      continue;
+    }
+    eligibleFamilyCount += 1;
+    adultCount += family.adults;
+    if (isSoloMinorFamily(family)) soloMinorCount += family.minors;
+    else familyMinorCount += family.minors;
   }
 
   return {
     familyCount: families.length,
     eligibleFamilyCount,
     adultCount,
-    minorCount,
+    familyMinorCount,
+    soloMinorCount,
+    guestMinorCount,
     totalPaid,
-    canCalculate: families.length >= 2 && eligibleFamilyCount >= 2,
-    recommendation:
-      families.length >= 2 ? recommendSplitMode(withEligibility) : null,
+    canCalculate: families.length >= 2 && eligibleFamilyCount >= 2 && adultCount > 0,
   };
 }
 
@@ -99,60 +106,50 @@ export function deriveSettlement(
   };
 }
 
-/**
- * Cuota de referencia para mostrar en una línea: lo que pone cada familia
- * (por familia), cada persona (todos iguales) o cada adulto (si los menores
- * pagan menos).
- */
+/** Lo que paga cada adulto: la cuota de referencia en una línea. */
 export function getUnitShare(settlement: Settlement): number {
-  const { breakdown } = settlement;
-  return breakdown.splitMode === "by-family" ? breakdown.familyShare : breakdown.adultShare;
-}
-
-export interface ModeComparisonRow {
-  familyId: string;
-  name: string;
-  byFamily: number;
-  byPerson: number;
-}
-
-/**
- * Cuánto le tocaría poner a cada familia que aporta por familia y por
- * persona (con la regla de menores elegida). Ayuda a decidir en la mesa
- * viendo números concretos; usa el mismo cálculo que el resultado.
- */
-export function deriveModeComparison(
-  families: Family[],
-  personMode: PersonSplitMode = "by-person"
-): ModeComparisonRow[] {
-  const withEligibility = computeAllEligibility(families);
-  const total = withEligibility.reduce((sum, family) => sum + family.paidAmount, 0);
-  const byFamily = calculateShareBreakdown(withEligibility, total, "by-family");
-  const byPerson = calculateShareBreakdown(withEligibility, total, personMode);
-
-  return withEligibility
-    .filter((family) => family.isEligibleToPay)
-    .map((family) => ({
-      familyId: family.id,
-      name: family.name,
-      byFamily: getFamilyShare(family, byFamily),
-      byPerson: getFamilyShare(family, byPerson),
-    }));
+  return settlement.breakdown.adultShare;
 }
 
 /**
  * El desglose con cada respuesta a "¿cómo pagan los menores?", para mostrar
  * cuánto pagaría un adulto y un menor antes de elegir.
  */
-export function derivePersonModePreviews(
-  families: Family[]
-): Record<PersonSplitMode, SplitBreakdown> {
+export function deriveModePreviews(families: Family[]): Record<SplitMode, SplitBreakdown> {
   const withEligibility = computeAllEligibility(families);
   const total = withEligibility.reduce((sum, family) => sum + family.paidAmount, 0);
   return Object.fromEntries(
-    PERSON_SPLIT_MODES.map((mode) => [
-      mode,
-      calculateShareBreakdown(withEligibility, total, mode),
-    ])
-  ) as Record<PersonSplitMode, SplitBreakdown>;
+    SPLIT_MODES.map((mode) => [mode, calculateShareBreakdown(withEligibility, total, mode)])
+  ) as Record<SplitMode, SplitBreakdown>;
+}
+
+export interface ModeComparisonRow {
+  familyId: string;
+  name: string;
+  /** Menores que vinieron solos (paga su padre, madre o tutor). */
+  isSoloMinor: boolean;
+  shares: Record<SplitMode, number>;
+}
+
+/**
+ * Cuánto le tocaría poner a cada familia que entra en la cuenta con cada
+ * respuesta sobre los menores. Usa el mismo cálculo que el resultado.
+ */
+export function deriveModeComparison(families: Family[]): ModeComparisonRow[] {
+  const withEligibility = computeAllEligibility(families);
+  const total = withEligibility.reduce((sum, family) => sum + family.paidAmount, 0);
+  const breakdowns = SPLIT_MODES.map(
+    (mode) => [mode, calculateShareBreakdown(withEligibility, total, mode)] as const
+  );
+
+  return withEligibility
+    .filter((family) => family.isEligibleToPay)
+    .map((family) => ({
+      familyId: family.id,
+      name: family.name,
+      isSoloMinor: isSoloMinorFamily(family),
+      shares: Object.fromEntries(
+        breakdowns.map(([mode, breakdown]) => [mode, getFamilyShare(family, breakdown)])
+      ) as Record<SplitMode, number>,
+    }));
 }

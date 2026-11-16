@@ -69,7 +69,8 @@ export function FamilyList({
 
       {familyCount >= 2 && eligibleFamilyCount < 2 && (
         <Notice title="Falta otra familia que aporte.">
-          Los menores solos no entran en el reparto. Sumá otra familia o cambiá el tipo.
+          Los menores solos que no pagan su parte no entran en el reparto. Sumá otra familia o
+          marcá que pagan su parte.
         </Notice>
       )}
 
@@ -98,7 +99,7 @@ export function FamilyList({
             </p>
           </div>
           <Button onClick={onCalculate} disabled={!canCalculate} className="shrink-0 sm:px-5 sm:py-3.5 sm:text-lg">
-            Ver recomendación
+            Cómo repartir
             <ArrowRightIcon />
           </Button>
         </div>

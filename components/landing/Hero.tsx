@@ -13,7 +13,7 @@ const ROTATING_WORDS = ["el carbón?", "el hielo?", "el vino?", "la birra?", "qu
 
 export function Hero() {
   // Se calcula en build con el mismo motor que usa la app: la muestra es real.
-  const sample = deriveSettlement(DEMO_FAMILIES, "ARS", "by-family");
+  const sample = deriveSettlement(DEMO_FAMILIES, "ARS", "by-person");
 
   return (
     <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 pb-16 pt-6 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-10 lg:pb-24 lg:pt-12">
@@ -54,8 +54,8 @@ export function Hero() {
 
         <p className="mt-9 max-w-xl text-lg leading-relaxed text-ink-soft sm:text-xl">
           Terminó la juntada y nadie sabe cuánto debe. Cargá quién vino y qué
-          puso cada uno: la app suma, reparte, te sugiere el criterio más justo
-          y arma las transferencias para mandar al grupo.
+          puso cada uno: la app suma, reparte por persona (los menores, como
+          ustedes decidan) y arma las transferencias para mandar al grupo.
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -73,7 +73,7 @@ export function Hero() {
             <FlameIcon className="text-lg text-ember-text" /> Listo en 2 minutos
           </li>
           <li className="flex items-center gap-2">
-            <SparkIcon className="text-lg text-ember-text" /> Te dice cómo repartir
+            <SparkIcon className="text-lg text-ember-text" /> La cuenta, paso a paso
           </li>
           <li className="flex items-center gap-2">
             <LockIcon className="text-lg text-ember-text" /> Sin servidores ni cuentas

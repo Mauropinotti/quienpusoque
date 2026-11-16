@@ -46,21 +46,16 @@ test.describe("calculadora: flujo completo", () => {
     await expect(page.getByTestId("family-card").filter({ hasText: "Juli" })).toContainText("No aporta");
 
     // Paso 3: recomendación + elección manual.
-    await page.getByRole("button", { name: "Ver recomendación" }).click();
-    await expect(page.getByRole("heading", { name: /Conviene repartir/ })).toBeVisible();
-    await page
-      .getByRole("group", { name: "Criterio de reparto" })
-      .getByText("Por persona", { exact: true })
-      .click();
-    await expect(page.getByRole("radio", { name: /Por persona/ })).toBeChecked();
-    // Hay menores: la app pregunta cómo pagan. Por defecto, igual que los adultos.
-    await expect(page.getByRole("radio", { name: /Igual que los adultos/ })).toBeChecked();
+    await page.getByRole("button", { name: "Cómo repartir" }).click();
+    // Sin sugerencia ni "por familia": se elige cuánto cuenta cada menor.
+    await expect(page.getByRole("heading", { level: 1, name: "¿Cómo pagan los menores?" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: /Igual que un adulto \(100%\)/ })).toBeChecked();
     await page.getByRole("button", { name: "Ver resultado" }).click();
 
     // Paso 4: 4 adultos + 2 menores = 6 personas → $2.000 c/u. Pérez debía 8.000 y puso 12.000.
     const ticket = page.getByRole("article", { name: /Ticket de Cumple de Juli/ });
     await expect(ticket.getByTestId("ticket-total")).toHaveText(money("12.000"));
-    await expect(ticket).toContainText("Reparto por persona, todos iguales");
+    await expect(ticket).toContainText("Reparto por persona, menores al 100%");
     await expect(ticket.getByTestId("ticket-steps")).toContainText("4 adultos + 2 menores = 6 personas");
     await expect(ticket.getByTestId("ticket-transfer")).toHaveCount(1);
     await expect(ticket.getByTestId("ticket-transfer")).toContainText("Los Gómez");
@@ -143,20 +138,19 @@ test.describe("calculadora: flujo completo", () => {
   test("el criterio se elige con teclado (radios nativos)", async ({ page }) => {
     await page.goto("/calcular?demo=1");
     await waitForCalculator(page);
-    await page.getByRole("button", { name: "Ver recomendación" }).click();
+    await page.getByRole("button", { name: "Cómo repartir" }).click();
 
-    const byFamily = page.getByRole("radio", { name: /Por familia/ });
-    const byPerson = page.getByRole("radio", { name: /Por persona/ });
-    const initial = (await byFamily.isChecked()) ? byFamily : byPerson;
-    const other = initial === byFamily ? byPerson : byFamily;
+    const full = page.getByRole("radio", { name: /Igual que un adulto/ });
+    const half = page.getByRole("radio", { name: /La mitad/ });
+    await expect(full).toBeChecked();
 
-    await initial.focus();
-    await page.keyboard.press(initial === byFamily ? "ArrowDown" : "ArrowUp");
-    await expect(other).toBeChecked();
-    await expect(other).toBeFocused();
+    await full.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(half).toBeChecked();
+    await expect(half).toBeFocused();
   });
 
-  test("una familia sin adultos no puede cargar monto", async ({ page }) => {
+  test("un menor solo carga monto solo si va a pagar su parte", async ({ page }) => {
     await page.goto("/calcular");
     await waitForCalculator(page);
     await page.getByLabel("Nombre del evento").fill("Asado");
@@ -165,15 +159,26 @@ test.describe("calculadora: flujo completo", () => {
     const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Agregar familia" }) });
     await setPeople(form, "adultos", 0);
     await setPeople(form, "menores", 1);
-    await expect(form.getByText("Sin adultos, esta familia no aporta")).toBeVisible();
+
+    // Invitado: no paga su parte y el monto queda en $0.
+    const paysOwnShare = form.getByRole("checkbox", { name: /Va a pagar su parte/ });
+    await expect(paysOwnShare).not.toBeChecked();
     await expect(page.getByLabel("Monto pagado")).toBeDisabled();
     await expect(page.getByLabel("Monto pagado")).toHaveValue("0");
+
+    // Si paga su parte (a través de su tutor), puede cargar lo que puso.
+    await paysOwnShare.check();
+    await expect(form.getByLabel("Cuánto salió (ítem 1)")).toBeEditable();
+
+    // Con un adulto ya no se pregunta.
+    await setPeople(form, "adultos", 1);
+    await expect(paysOwnShare).toHaveCount(0);
   });
 
   test("la foto opcional se recorta al formato del ticket", async ({ page }) => {
     await page.goto("/calcular?demo=1");
     await waitForCalculator(page);
-    await page.getByRole("button", { name: "Ver recomendación" }).click();
+    await page.getByRole("button", { name: "Cómo repartir" }).click();
     await page.getByRole("button", { name: "Ver resultado" }).click();
 
     // Imagen cuadrada generada en el momento: tiene que quedar apaisada.
@@ -201,55 +206,65 @@ test.describe("calculadora: flujo completo", () => {
   });
 });
 
-test.describe("menores al 50%", () => {
-  test("el ticket y el WhatsApp muestran la cuenta paso a paso", async ({ page, context, browserName }) => {
+test.describe("menores al 50%, por porciones", () => {
+  test("el ticket y el WhatsApp muestran las porciones y al tutor del menor solo", async ({ page, context, browserName }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto("/calcular");
     await waitForCalculator(page);
     await page.getByLabel("Nombre del evento").fill("Asado");
     await page.getByRole("button", { name: "Cargar familias" }).click();
 
-    // 6 adultos y 2 menores aportan; Juli (sin adultos) es invitada. Total $ 12.000.
-    await addFamily(page, { name: "Los Pérez", adults: 2, minors: 1, items: [["Carne", "7000"], ["Carbón", "2000"]] });
-    await addFamily(page, { name: "Los Gómez", adults: 2, minors: 1, items: [["Bebidas", "3000"]] });
-    await addFamily(page, { name: "Ana", adults: 1 });
-    await addFamily(page, { name: "Los Ruiz", adults: 1 });
-    await addFamily(page, { name: "Juli", adults: 0, minors: 1 });
+    // 5 adultos, 3 menores con su familia y Juli, que vino sola y paga su parte. $ 12.000.
+    await addFamily(page, { name: "Los Pérez", adults: 2, items: [["Carne", "7000"], ["Carbón", "2000"]] });
+    await addFamily(page, { name: "Ana", adults: 1, minors: 1 });
+    await addFamily(page, { name: "Los Gómez", adults: 2, minors: 2, items: [["Bebidas", "3000"]] });
+    await addFamily(page, { name: "Juli", adults: 0, minors: 1, paysOwnShare: true });
     await expect(page.getByTestId("families-total")).toHaveText(money("12.000"));
+    await expect(page.getByTestId("family-card").filter({ hasText: "Juli" })).toContainText("Paga su tutor");
 
-    await page.getByRole("button", { name: "Ver recomendación" }).click();
-    await page.getByRole("group", { name: "Criterio de reparto" }).getByText("Por persona", { exact: true }).click();
+    await page.getByRole("button", { name: "Cómo repartir" }).click();
+    await expect(page.getByTestId("solo-minor")).toContainText("paga su parte a través de su padre, madre o tutor");
     const half = page.getByRole("radio", { name: /La mitad \(50%\)/ });
     // Cada respuesta muestra cuánto pagaría un adulto y un menor.
-    await expect(page.locator("label").filter({ has: half })).toContainText(/\$\s?1\.750 c\/ adulto · \$\s?750 c\/ menor/);
+    await expect(page.locator("label").filter({ has: half })).toContainText(
+      /\$\s?1\.714,29 c\/ adulto · \$\s?857,15 c\/ menor/
+    );
     await page.getByText("La mitad (50%)", { exact: true }).click();
     await expect(half).toBeChecked();
-    await expect(page.getByRole("columnheader", { name: /Por persona/ })).toContainText("menores 50%");
+    // La tabla compara las tres respuestas para Ana (1 adulto y 1 menor).
+    await expect(page.getByRole("row", { name: /Ana/ })).toContainText(/\$\s?2\.571,44/);
     await page.getByRole("button", { name: "Ver resultado" }).click();
 
     const ticket = page.getByRole("article", { name: /Ticket de Asado/ });
     await expect(ticket).toContainText("Reparto por persona, menores al 50%");
     await expect(ticket.getByTestId("ticket-steps").getByRole("listitem")).toHaveText([
-      "6 adultos + 2 menores = 8 personas",
-      /Parte igual: \$\s?12\.000 ÷ 8 = \$\s?1\.500 por persona/,
-      /Cada menor paga el 50%: \$\s?750/,
-      /Lo que no pagan los menores: 2 × \$\s?750 = \$\s?1\.500/,
-      /Se reparte entre los 6 adultos: \$\s?1\.500 ÷ 6 = \$\s?250 más cada uno/,
-      /Cada adulto paga: \$\s?1\.500 \+ \$\s?250 = \$\s?1\.750/,
+      "5 adultos × 1 + 4 menores × ½ = 7 porciones",
+      "1 de los menores vino solo y paga su parte (a través de su padre, madre o tutor)",
+      /\$\s?12\.000 ÷ 7 porciones = \$\s?1\.714,29 por porción: lo que paga cada adulto/,
+      /Cada menor paga media porción: \$\s?1\.714,29 ÷ 2 = \$\s?857,15/,
     ]);
-    const perez = ticket.getByTestId("ticket-balance").filter({ hasText: "Los Pérez" });
-    await expect(perez).toContainText("2 adultos y 1 menor");
-    await expect(perez.getByTestId("ticket-share-formula")).toHaveText(/2 adultos × \$\s?1\.750 \+ 1 menor × \$\s?750/);
-    await expect(perez).toContainText(/le tocaba \$\s?4\.250/);
-    await expect(ticket.getByTestId("ticket-balance").filter({ hasText: "Juli" })).toContainText("sin adultos");
+    const ana = ticket.getByTestId("ticket-balance").filter({ hasText: "Ana" });
+    await expect(ana).toContainText("1 adulto y 1 menor");
+    await expect(ana.getByTestId("ticket-share-formula")).toHaveText(
+      /1 adulto × \$\s?1\.714,29 \+ 1 menor × \$\s?857,15/
+    );
+    await expect(ana).toContainText(/le tocaba \$\s?2\.571,44/);
+
+    // El menor solo queda marcado y transfiere su padre, madre o tutor.
+    const juli = ticket.getByTestId("ticket-balance").filter({ hasText: "Juli" });
+    await expect(juli).toContainText("Menor · paga su parte a través de su padre, madre o tutor");
+    await expect(ticket.getByTestId("ticket-transfer").filter({ hasText: "Juli" })).toContainText(
+      "Padre/madre o tutor encargado de Juli"
+    );
 
     await page.getByRole("button", { name: "Copiar resumen para WhatsApp" }).click();
     if (browserName === "chromium") {
       const clipboard = await page.evaluate(() => navigator.clipboard.readText());
       expect(clipboard).toContain("Criterio usado: por persona, menores al 50%");
-      expect(clipboard).toMatch(/Cómo se calculó:\n- 6 adultos \+ 2 menores = 8 personas/);
-      expect(clipboard).toMatch(/- Los Pérez: 2 adultos × \$\s?1\.750 \+ 1 menor × \$\s?750 = \$\s?4\.250/);
-      expect(clipboard).toMatch(/Ana le transfiere \$\s?1\.750 a Los Pérez/);
+      expect(clipboard).toMatch(/Cómo se calculó:\n- 5 adultos × 1 \+ 4 menores × ½ = 7 porciones/);
+      expect(clipboard).toMatch(/- Ana: 1 adulto × \$\s?1\.714,29 \+ 1 menor × \$\s?857,15 = \$\s?2\.571,44/);
+      expect(clipboard).toMatch(/- Padre\/madre o tutor encargado de Juli le transfiere \$\s?857 a Los Pérez/);
+      expect(clipboard).not.toMatch(/- Juli le transfiere/);
     }
   });
 });
@@ -315,7 +330,7 @@ test.describe("borrador", () => {
   test("retoma la cuenta en el paso donde quedó, sin pasar por el paso 1", async ({ page }) => {
     await page.goto("/calcular?demo=1");
     await waitForCalculator(page);
-    await page.getByRole("button", { name: "Ver recomendación" }).click();
+    await page.getByRole("button", { name: "Cómo repartir" }).click();
     await page.getByRole("button", { name: "Ver resultado" }).click();
     await expect(page.getByRole("heading", { name: "¡Cuenta cerrada!" })).toBeVisible();
 

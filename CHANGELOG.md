@@ -4,6 +4,25 @@ El historial que se muestra en la landing sale de `lib/releases.ts`. Al
 publicar una versión: agregarla arriba ahí, subir `version` en `package.json`
 y sumarla acá.
 
+## Quienpusoque V1.3 · noviembre de 2026 · Reparto por porciones
+
+- Un solo criterio: por persona, por **porciones**. Cada adulto cuenta una
+  porción y cada menor la fracción elegida: 1 (100%), ½ (50%) o 0 (0%).
+  `precio por porción = total ÷ (adultos + menores × fracción)`; cada adulto
+  paga una porción y cada menor su fracción.
+- Al 50% un menor paga exactamente la mitad que un adulto (antes, en V1.2,
+  pagaba la mitad de la parte igual y la diferencia la absorbían los adultos:
+  terminaba pagando menos de la mitad). El caso 1 adulto + 1 menor paga 1,5
+  porciones.
+- Menores que vinieron solos: "Va a pagar su parte". Si se marca, entran en
+  la cuenta con su fracción y en el ticket, el PDF y el WhatsApp aparece
+  "Padre/madre o tutor encargado de X le transfiere…"; si no, quedan
+  invitados.
+- Se quitan la sugerencia automática de criterio y el reparto "por familia".
+  Los borradores y archivos con "por familia" piden volver a elegir; el
+  historial los sigue mostrando como "por familia".
+- Archivo exportado: versión 3 (lee la 1 y la 2).
+
 ## Quienpusoque V1.2 · noviembre de 2026 · Cuentas a la vista
 
 - Cada familia carga qué puso y cuánto salió cada cosa; la app suma el total

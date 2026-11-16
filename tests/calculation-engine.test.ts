@@ -1,15 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Family } from "@/types/family";
 import type { EventData, ClosedEvent } from "@/types/event";
-import {
-  computeAllEligibility,
-  computeEligibility,
-  validateFamily,
-} from "@/lib/calculations/eligibility";
+import { computeEligibility, validateFamily } from "@/lib/calculations/eligibility";
 import { calculateBalances } from "@/lib/calculations/calculateBalances";
 import { calculateTransfers } from "@/lib/calculations/calculateTransfers";
-import { calculateModeImpact } from "@/lib/calculations/calculateModeImpact";
-import { recommendSplitMode } from "@/lib/calculations/recommendSplitMode";
 import { generateWhatsappText } from "@/lib/text/generateWhatsappText";
 import {
   CURRENT_DRAFT_STORAGE_KEY,
@@ -151,21 +145,21 @@ describe("eligibility", () => {
     ]);
 
     const result = calculateBalances(
-      eventData([minor, family({ id: "a" }), family({ id: "b" })], "by-family")
+      eventData([minor, family({ id: "a" }), family({ id: "b" })], "by-person")
     );
     expect(result.ok).toBe(false);
   });
 });
 
 describe("calculateBalances", () => {
-  it("reparte por familia con dos familias que pagaron y varias que no", () => {
+  it("reparte por persona entre familias del mismo tamaño", () => {
     const families = [
       family({ id: "a", name: "Familia A", adults: 2, paidAmount: 10000 }),
       family({ id: "b", name: "Familia B", adults: 2, paidAmount: 5000 }),
       family({ id: "c", name: "Familia C", adults: 2, paidAmount: 0 }),
       family({ id: "d", name: "Familia D", adults: 2, paidAmount: 0 }),
     ];
-    const result = calculateBalances(eventData(families, "by-family"));
+    const result = calculateBalances(eventData(families, "by-person"));
     expectOk(result);
 
     expect(result.data.totalAmount).toBe(15000);
@@ -205,7 +199,7 @@ describe("calculateBalances", () => {
   });
 
   it("los balances positivos y negativos cierran contra cero", () => {
-    const result = calculateBalances(eventData(demoFamilies, "by-family"));
+    const result = calculateBalances(eventData(demoFamilies, "by-person"));
     expectOk(result);
 
     const balanceSum = result.data.balances.reduce(
@@ -224,7 +218,7 @@ describe("calculateBalances", () => {
           family({ id: "b", name: "Familia B", adults: 1, minors: 0, paidAmount: 0 }),
           family({ id: "c", name: "Familia C", adults: 0, minors: 1, paidAmount: 0 }),
         ],
-        "by-family"
+        "by-person"
       )
     );
     expectOk(result);
@@ -240,91 +234,39 @@ describe("calculateBalances", () => {
 
 describe("calculateTransfers", () => {
   it("cancela deudas y créditos con transferencias", () => {
-    const result = calculateBalances(eventData(demoFamilies, "by-family"));
+    const result = calculateBalances(eventData(demoFamilies, "by-person"));
     expectOk(result);
 
     const transfers = calculateTransfers(result.data.balances);
 
-    expect(transfers.totalOwed).toBe(5000);
-    expect(transfers.totalTransferred).toBe(5000);
+    expect(transfers.totalOwed).toBe(1800);
+    expect(transfers.totalTransferred).toBe(1800);
     expect(transfers.roundingDiscrepancy).toBe(0);
     expect(transfers.transfers).toEqual([
       expect.objectContaining({
         fromFamilyName: "Los López",
         toFamilyName: "Los García",
-        amount: 4000,
+        amount: 1600,
       }),
       expect.objectContaining({
         fromFamilyName: "Los Rodríguez",
         toFamilyName: "Los Fernández",
-        amount: 1000,
+        amount: 200,
       }),
     ]);
-  });
-});
-
-describe("recommendSplitMode", () => {
-  it("sugiere reparto por persona cuando hay muchas familias de 1 adulto", () => {
-    const recommendation = recommendSplitMode(
-      computeAllEligibility([
-        family({ id: "a", name: "A", adults: 1, minors: 0, paidAmount: 1000 }),
-        family({ id: "b", name: "B", adults: 1, minors: 0, paidAmount: 1000 }),
-        family({ id: "c", name: "C", adults: 3, paidAmount: 1000 }),
-      ])
-    );
-
-    expect(recommendation.recommendedMode).toBe("by-person");
-  });
-
-  it("sugiere reparto por familia con tamaños similares", () => {
-    const recommendation = recommendSplitMode(
-      computeAllEligibility([
-        family({ id: "a", name: "A", adults: 3, paidAmount: 3000 }),
-        family({ id: "b", name: "B", adults: 3, paidAmount: 3000 }),
-        family({ id: "c", name: "C", adults: 4, paidAmount: 3000 }),
-        family({ id: "d", name: "D", adults: 4, paidAmount: 3000 }),
-      ])
-    );
-
-    expect(recommendation.recommendedMode).toBe("by-family");
-  });
-
-  it("sugiere reparto por persona cuando el impacto económico es alto", () => {
-    const families = computeAllEligibility([
-      family({ id: "a", name: "A", adults: 1, minors: 0, paidAmount: 5000 }),
-      family({ id: "b", name: "B", adults: 1, minors: 0, paidAmount: 0 }),
-      family({ id: "c", name: "C", adults: 5, paidAmount: 5000 }),
-    ]);
-
-    const impact = calculateModeImpact(families);
-    const recommendation = recommendSplitMode(families);
-
-    expect(impact.maxDiffRatio).toBeGreaterThan(0.35);
-    expect(recommendation.recommendedMode).toBe("by-person");
-  });
-});
-
-describe("calculateModeImpact", () => {
-  it("calcula cuotas por familia y por persona para comparar criterios", () => {
-    const impact = calculateModeImpact(computeAllEligibility(demoFamilies));
-
-    expect(impact.byFamilyShares.garcia).toBe(4000);
-    expect(impact.byPersonShares.garcia).toBe(6400);
-    expect(impact.avgDiffRatio).toBeGreaterThan(0);
-    expect(impact.maxDiffRatio).toBeGreaterThan(impact.avgDiffRatio);
   });
 });
 
 describe("generateWhatsappText", () => {
   it("genera texto legible para WhatsApp", () => {
-    const result = calculateBalances(eventData(demoFamilies, "by-family"));
+    const result = calculateBalances(eventData(demoFamilies, "by-person"));
     expectOk(result);
     const { transfers } = calculateTransfers(result.data.balances);
 
     const text = generateWhatsappText({
       eventName: "Asado del sábado",
       currency: "ARS",
-      splitMode: "by-family",
+      splitMode: "by-person",
       families: demoFamilies,
       breakdown: result.data.breakdown,
       balances: result.data.balances,
@@ -334,7 +276,7 @@ describe("generateWhatsappText", () => {
     expect(text).toContain("Asado del sábado");
     expect(text).toContain("Gasto total:");
     expect(text).toContain("Transferencias sugeridas:");
-    expect(text).toContain("No aportan (sin adultos):");
+    expect(text).toContain("No aportan (menores solos invitados):");
     expect(text).toContain("Cómo se calculó:");
     expect(text).toContain("Calculado con ¿Quién puso qué?");
     expect(text).not.toMatch(/Ã|Â|�/);
@@ -349,9 +291,8 @@ describe("localEventStorage", () => {
     expect(clearCurrentEventDraft()).toBe(false);
     expect(
       saveCurrentEventDraft({
-        eventData: eventData(demoFamilies, "by-family"),
-        selectedMode: "by-family",
-        recommendationAccepted: true,
+        eventData: eventData(demoFamilies, "by-person"),
+        selectedMode: "by-person",
         createdAt: "2026-05-03T12:00:00.000Z",
       })
     ).toBeNull();
@@ -361,9 +302,8 @@ describe("localEventStorage", () => {
     installWindowWithStorage();
 
     const saved = saveCurrentEventDraft({
-      eventData: eventData(demoFamilies, "by-family"),
-      selectedMode: "by-family",
-      recommendationAccepted: true,
+      eventData: eventData(demoFamilies, "by-person"),
+      selectedMode: "by-person",
       createdAt: "2026-05-03T12:00:00.000Z",
     });
     const draft = readCurrentEventDraft();
@@ -388,9 +328,8 @@ describe("localEventStorage", () => {
         currency: "ARS",
         createdAt: "2026-05-03T12:00:00.000Z",
         families,
-        selectedMode: "by-family",
-        splitMode: "by-family",
-        recommendationAccepted: null,
+        selectedMode: "by-person",
+        splitMode: "by-person",
         updatedAt: "2026-05-03T12:00:00.000Z",
       })
     );
@@ -405,10 +344,9 @@ describe("localEventStorage", () => {
 
 describe("closedEventsStorage", () => {
   function buildClosedEvent(): ClosedEvent {
-    const result = calculateBalances(eventData(demoFamilies, "by-family"));
+    const result = calculateBalances(eventData(demoFamilies, "by-person"));
     expectOk(result);
     const transferResult = calculateTransfers(result.data.balances);
-    const recommendation = recommendSplitMode(computeAllEligibility(demoFamilies));
 
     return {
       id: "closed-1",
@@ -416,11 +354,10 @@ describe("closedEventsStorage", () => {
       createdAt: "2026-05-03T12:00:00.000Z",
       closedAt: "2026-05-03T15:00:00.000Z",
       totalAmount: result.data.totalAmount,
-      splitModeUsed: "by-family",
+      splitModeUsed: "by-person",
       familiesSnapshot: demoFamilies,
       balancesSnapshot: result.data.balances,
       transfersSnapshot: transferResult.transfers,
-      recommendationSnapshot: recommendation,
       optionalNote: "Cerrado en la sobremesa.",
     };
   }
@@ -437,7 +374,7 @@ describe("closedEventsStorage", () => {
       id: "closed-1",
       eventName: "Asado del sábado",
       totalAmount: 16000,
-      splitModeUsed: "by-family",
+      splitModeUsed: "by-person",
     });
     expect(events[0].balancesSnapshot).toHaveLength(5);
     expect(events[0].transfersSnapshot.length).toBeGreaterThan(0);

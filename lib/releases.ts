@@ -8,6 +8,17 @@ export const APP_CODENAME = "Quienpusoque";
 
 export const RELEASES: readonly Release[] = [
   {
+    version: "1.3",
+    month: "2026-11",
+    title: "Reparto por porciones",
+    changes: [
+      "Todo se reparte por persona, por porciones: cada adulto cuenta una y cada menor 1, ½ o 0, según elijan.",
+      "Al 50%, un menor paga exactamente la mitad que un adulto. Una familia de 1 adulto y 1 menor paga 1,5 porciones.",
+      "Menores que vinieron solos: si pagan su parte, el ticket y el WhatsApp dicen “padre/madre o tutor encargado de…”.",
+      "Se quitan la sugerencia automática y el reparto “por familia”: un solo criterio, más claro.",
+    ],
+  },
+  {
     version: "1.2",
     month: "2026-11",
     title: "Cuentas a la vista",

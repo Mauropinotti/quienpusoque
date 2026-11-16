@@ -1,6 +1,6 @@
 # ¿Quién puso qué?
 
-**Repartí los gastos del asado sin planillas ni discusiones.** Cargás quién vino y cuánto puso; la app reparte por familia o por persona, te sugiere el criterio más justo y arma las transferencias mínimas para mandar al grupo, con resumen para WhatsApp y ticket PDF.
+**Repartí los gastos del asado sin planillas ni discusiones.** Cargás quién vino y qué puso cada uno; la app reparte por persona, por porciones (los menores cuentan entero, medio o nada, como decidan) y arma las transferencias mínimas para mandar al grupo, con resumen para WhatsApp y ticket PDF.
 
 Sin registro, sin backend, sin base de datos: todo corre en el navegador.
 
@@ -19,8 +19,8 @@ Termina la juntada. Una familia compró carne, otra llevó bebidas, alguien pag�
 ![Flujo en el celular: evento, familias, criterio y ticket](docs/screenshots/flujo-movil.jpg)
 
 1. **Evento**: le ponés nombre a la juntada, o importás un cálculo que exportaste antes y seguís donde lo dejaste.
-2. **Familias**: quién vino, cuántos adultos y cuántos menores son, y qué puso cada uno, cosa por cosa ("carne $10.000", "hielo $2.000"). La app suma el total. Una familia sin adultos no aporta.
-3. **Criterio**: la app recomienda repartir por familia o por persona y explica por qué. Por persona, el grupo elige cómo pagan los menores: igual que los adultos, la mitad (lo que no pagan se reparte entre los adultos) o nada. Se ve cuánto le tocaría a cada uno antes de decidir.
+2. **Familias**: quién vino, cuántos adultos y cuántos menores son, y qué puso cada uno, cosa por cosa ("carne $10.000", "hielo $2.000"). La app suma el total. Si vinieron menores solos, se marca si pagan su parte (la paga su tutor) o quedan invitados.
+3. **¿Cómo pagan los menores?**: se reparte por porciones. Cada adulto es una porción y cada menor cuenta entera (100%), media (50%) o nada (0%). Se ve cuánto le tocaría a cada familia con cada opción antes de decidir.
 4. **Ticket**: balances con el detalle de lo que puso cada uno, el cálculo paso a paso y la cuenta de cada familia, transferencias numeradas, copiar para WhatsApp, PDF, exportar el cálculo y guardar en el historial.
 
 La ayuda para usuarios está en `/ayuda`.
@@ -29,12 +29,12 @@ La ayuda para usuarios está en `/ayuda`.
 
 | | |
 |---|---|
-| **Motor de cálculo puro** | Elegibilidad, recomendación, balances y transferencias son funciones puras en `lib/calculations/`, sin React. Las transferencias usan aritmética entera para no arrastrar errores de punto flotante. |
+| **Motor de cálculo puro** | Elegibilidad, porciones, balances y transferencias son funciones puras en `lib/calculations/`, sin React. Las transferencias usan aritmética entera para no arrastrar errores de punto flotante. |
 | **Flujo como máquina de estados** | `lib/flow/eventFlow.ts` es un reducer puro y testeado: no lee storage, no genera ids ni fechas. La UI solo despacha acciones. |
 | **Rendimiento medido** | 16 teclas en un input pasaban de 48 operaciones de `localStorage` a 1; agregar una familia, de 33 renders a 10. Landing sin JS propio, pasos con carga diferida y jsPDF por intención. Detalle y metodología en [`docs/performance.md`](docs/performance.md). |
 | **Lighthouse móvil** | Performance 98–99 y **100** en accesibilidad, buenas prácticas y SEO en las tres rutas. CLS 0. |
 | **Sin flash al volver** | Si hay una cuenta a medio hacer, un script inline decide antes del primer paint qué mostrar; nunca se ve el paso 1 para después saltar. |
-| **Probado de punta a punta** | 97 tests unitarios (Vitest) y 30 E2E (Playwright, móvil y desktop) sobre el build de producción: portapapeles, descarga y validación del PDF, exportar e importar el cálculo, recarga inmediata, teclado, recorte de foto. Un error de consola hace fallar el test. |
+| **Probado de punta a punta** | 95 tests unitarios (Vitest) y 32 E2E (Playwright, móvil y desktop) sobre el build de producción: portapapeles, descarga y validación del PDF, exportar e importar el cálculo, recarga inmediata, teclado, recorte de foto. Un error de consola hace fallar el test. |
 | **Cuentas a la vista** | Cada familia carga qué puso y cuánto salió cada cosa; el total lo calcula la app y el desglose aparece en el ticket, el PDF y el WhatsApp. |
 | **Privacidad por diseño** | El cálculo, el borrador, el historial y la foto del ticket nunca salen del navegador. El cálculo exportado es un archivo que guarda el usuario. |
 
@@ -60,32 +60,19 @@ Cada familia carga cada cosa con lo que salió y la app calcula el total:
 El reparto usa ese total; el desglose es el respaldo que se muestra en todas
 las salidas.
 
-### Por familia o por persona
+### Por porciones
+
+Un solo criterio, siempre por persona. Cada adulto cuenta una porción y cada menor la fracción que elija el grupo:
 
 ```text
-por familia:            parte = gasto_total / familias_que_aportan
-por persona (100%):     parte = gasto_total / (adultos + menores)
-menores al 50%:         parte = gasto_total / (adultos + menores)
-                        menor = parte × 50%
-                        adulto = parte + (menores × (parte − menor)) / adultos
-menores al 0%:          adulto = gasto_total / adultos;  menor = 0
+porciones          = adultos + menores × fracción     (fracción: 1, ½ o 0)
+precio por porción = gasto_total / porciones           → lo que paga cada adulto
+cada menor paga    = precio × fracción
 ```
 
-Por familia es simple y sirve con grupos de tamaño parecido. Por persona es más fino cuando hay familias chicas y grandes; ahí se decide cuánto pagan los menores. El cálculo completo, con el ejemplo de $12.000 entre 6 adultos y 2 menores, está en [`docs/calculation-model.md`](docs/calculation-model.md). Ticket, PDF y WhatsApp muestran cada paso.
+Al 50%, un menor paga exactamente la mitad que un adulto y una familia de 1 adulto + 1 menor paga 1,5 porciones. Nadie absorbe "lo que no paga otro": todos pagan el mismo precio por porción. Los menores que vinieron solos entran solo si "van a pagar su parte" (la paga su padre, madre o tutor). El cálculo completo está en [`docs/calculation-model.md`](docs/calculation-model.md). Ticket, PDF y WhatsApp muestran cada paso.
 
-### Recomendación
-
-`lib/calculations/recommendSplitMode.ts` calcula métricas del grupo y genera señales con peso:
-
-La recomendación elige la base (por familia o por persona); cuánto pagan los menores lo decide el grupo.
-
-- Muchas familias de 1 adulto favorecen `by-person`.
-- Muchas familias grandes favorecen `by-family`.
-- Si el impacto económico entre criterios es alto, favorece `by-person`.
-- Si el impacto es bajo y los tamaños son parecidos, favorece `by-family`.
-- Sin señales fuertes, sugiere `by-family` por simpleza, con confianza baja.
-
-La recomendación es una ayuda: siempre se puede elegir otro criterio. Más en [`docs/recommendation-criteria.md`](docs/recommendation-criteria.md).
+Hasta V1.2 había una sugerencia automática y reparto "por familia"; se quitaron en V1.3 (ver [`CHANGELOG.md`](CHANGELOG.md)).
 
 ### Balances y transferencias
 
@@ -114,16 +101,16 @@ Evento: **Asado del sábado**
 | Los Martínez | 0 | 1 | $0 |
 | Los Fernández | 2 | 1 | $5.000 |
 
-Total: **$16.000**. Aportan 4 familias: 7 adultos y 3 menores. Los Martínez (sin adultos) no aportan.
+Total: **$16.000**. Aportan 4 familias: 7 adultos y 3 menores. Los Martínez (1 menor solo, invitado) no aportan.
 
-Por familia, cada una pone `16.000 / 4 = 4.000`:
+Con menores al 100% son 10 porciones de `16.000 / 10 = 1.600`:
 
-- Los López le transfieren $4.000 a Los García.
-- Los Rodríguez le transfieren $1.000 a Los Fernández.
+- Los López le transfieren $1.600 a Los García.
+- Los Rodríguez le transfieren $200 a Los Fernández.
 
-Por persona con menores al 50%: `16.000 / 10 = 1.600` por persona, cada menor paga $800, los 3 menores dejan $2.400 que se reparten entre los 7 adultos ($342,86 más cada uno) y cada adulto paga $1.942,86.
+Con menores al 50%: `7 adultos × 1 + 3 menores × ½ = 8,5 porciones`; `16.000 / 8,5 = $1.882,35` por adulto y $941,18 por menor.
 
-El cálculo por familia es el ticket de muestra de la landing: se genera en build con el motor real. Más casos en [`docs/examples.md`](docs/examples.md).
+El cálculo al 100% es el ticket de muestra de la landing: se genera en build con el motor real. Más casos en [`docs/examples.md`](docs/examples.md).
 
 ## Ticket PDF
 
@@ -156,7 +143,7 @@ components/
   landing/            secciones de la landing (Server Components)
   calculator/         CalculatorApp: estado y flujo; fallback; stepper
   event/ families/    pasos 1 y 2 (incluye importar y exportar el cálculo)
-  recommendation/     paso 3
+  criterion/          paso 3: cómo pagan los menores
   results/            ticket, WhatsApp, PDF
   history/ help/      historial y ayuda
   ui/ layout/         primitivas, íconos, header, footer
@@ -203,12 +190,12 @@ Si el entorno ya tiene un Chromium, `PLAYWRIGHT_CHROMIUM_PATH=/ruta/a/chrome npm
 
 ## Estado
 
-Versión actual: **Quienpusoque V1.2** (noviembre de 2026). La landing tiene una sección de progreso con las novedades y el historial; el detalle está en [`CHANGELOG.md`](CHANGELOG.md).
+Versión actual: **Quienpusoque V1.3** (noviembre de 2026). La landing tiene una sección de progreso con las novedades y el historial; el detalle está en [`CHANGELOG.md`](CHANGELOG.md).
 
 - [x] Landing y calculadora mobile first.
 - [x] Alta, edición y eliminación de familias.
-- [x] Reglas de elegibilidad, reparto por familia y por persona.
-- [x] Motor de recomendación con comparación por familia.
+- [x] Reparto por persona, por porciones: menores al 100%, 50% o 0%.
+- [x] Menores que vinieron solos: pagan su parte a través de su tutor o quedan invitados.
 - [x] Balances y transferencias mínimas.
 - [x] Resumen para WhatsApp con fallback de copiado.
 - [x] Borrador e historial locales.

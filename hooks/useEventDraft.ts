@@ -27,7 +27,6 @@ interface UseEventDraftOptions extends SaveEventDraftInput {
 export function useEventDraft({
   eventData,
   selectedMode,
-  recommendationAccepted,
   createdAt,
   storedFingerprint,
 }: UseEventDraftOptions) {
@@ -49,7 +48,7 @@ export function useEventDraft({
   }, []);
 
   useEffect(() => {
-    const input = { eventData, selectedMode, recommendationAccepted, createdAt };
+    const input = { eventData, selectedMode, createdAt };
     const fingerprint = getDraftFingerprint(input);
     if (fingerprint === lastFingerprintRef.current) return;
 
@@ -57,7 +56,7 @@ export function useEventDraft({
     pendingRef.current = input;
     window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(flush, SAVE_DELAY_MS);
-  }, [createdAt, eventData, flush, recommendationAccepted, selectedMode]);
+  }, [createdAt, eventData, flush, selectedMode]);
 
   useEffect(() => {
     const handleVisibility = () => {

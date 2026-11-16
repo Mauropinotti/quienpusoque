@@ -4,6 +4,7 @@ import { memo, useState } from "react";
 import type { ClosedEvent } from "@/types/event";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
 import { formatShortDateTime } from "@/lib/formatting/formatDate";
+import { describePayer, getSoloMinorIds, splitModeLabel } from "@/lib/text/describeSplit";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ArrowRightIcon } from "@/components/ui/icons";
@@ -19,7 +20,9 @@ export const EventHistoryCard = memo(function EventHistoryCard({
 }: EventHistoryCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
-  const modeLabel = event.splitModeUsed === "by-family" ? "por familia" : "por persona";
+  const modeLabel = splitModeLabel(event.splitModeUsed);
+  // Un menor que vino solo no transfiere: aparece su padre, madre o tutor.
+  const soloMinorIds = getSoloMinorIds(event.familiesSnapshot);
   const detailsId = `history-${event.id}`;
 
   return (
@@ -52,10 +55,14 @@ export const EventHistoryCard = memo(function EventHistoryCard({
             <ul className="mt-2 space-y-1.5 text-sm">
               {event.transfersSnapshot.map((transfer, index) => (
                 <li key={`${transfer.fromFamilyId}-${transfer.toFamilyId}-${index}`}>
-                  <span className="font-bold">{transfer.fromFamilyName}</span>
+                  <span className="font-bold">
+                    {describePayer(transfer.fromFamilyId, transfer.fromFamilyName, soloMinorIds)}
+                  </span>
                   <ArrowRightIcon className="mx-1 inline-block align-[-2px] text-ember-text" />
                   <span className="sr-only"> le transfiere a </span>
-                  <span className="font-bold">{transfer.toFamilyName}</span>{" "}
+                  <span className="font-bold">
+                    {describePayer(transfer.toFamilyId, transfer.toFamilyName, soloMinorIds)}
+                  </span>{" "}
                   <span className="tabular font-mono">{formatMoney(transfer.amount)}</span>
                 </li>
               ))}

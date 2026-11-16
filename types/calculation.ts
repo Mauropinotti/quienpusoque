@@ -38,32 +38,31 @@ export interface FamilyBalance {
 /**
  * Cómo se llegó a la parte de cada uno, paso a paso. Lo calcula
  * `calculateShareBreakdown` y lo muestran el ticket, el WhatsApp y el PDF.
+ *
+ * Reparto por porciones: cada adulto cuenta una porción y cada menor la
+ * fracción elegida (1, ½ o 0). Precio de la porción = total ÷ porciones.
  * Cada monto es el resultado redondeado a centavos de una operación sobre los
  * montos anteriores, así las cuentas que se muestran cierran a la vista.
  */
 export interface SplitBreakdown {
   splitMode: SplitMode;
   totalAmount: number;
-  /** Familias con al menos un adulto. */
+  /** Familias que entran en la cuenta. */
   contributingFamilies: number;
-  /** Adultos de las familias que aportan. */
+  /** Adultos que entran en la cuenta. */
   adults: number;
-  /** Menores de las familias que aportan. */
+  /** Menores que entran en la cuenta: los de familias con adultos y los solos que pagan su parte. */
   minors: number;
-  /** `by-family`: lo que pone cada familia. 0 en los criterios por persona. */
-  familyShare: number;
-  /** Criterios por persona: total ÷ (adultos + menores). */
-  personShare: number;
-  /** Parte de la cuota que paga cada menor: 1, 0,5 o 0. */
+  /** De esos menores, los que vinieron solos (paga su padre, madre o tutor). */
+  soloMinors: number;
+  /** Porción de cada menor: 1, 0,5 o 0. */
   minorRatio: number;
-  /** Lo que paga cada menor. */
-  minorShare: number;
-  /** Lo que dejan de pagar entre todos los menores (solo menores al 50%). */
-  minorsUnpaid: number;
-  /** Lo que suma cada adulto por lo que no pagan los menores (solo 50%). */
-  adultSurcharge: number;
-  /** Lo que paga cada adulto. */
+  /** adultos + menores × minorRatio. */
+  portions: number;
+  /** Lo que paga cada adulto: total ÷ porciones. */
   adultShare: number;
+  /** Lo que paga cada menor: adultShare × minorRatio. */
+  minorShare: number;
 }
 
 export interface CalculationOutput {
