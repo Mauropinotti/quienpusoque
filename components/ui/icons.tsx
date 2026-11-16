@@ -74,6 +74,12 @@ export const DownloadIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const UploadIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 16V5M7 10l5-5 5 5M5 20h14" />
+  </Icon>
+);
+
 export const CameraIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M4 8h3l2-3h6l2 3h3v11H4z" />

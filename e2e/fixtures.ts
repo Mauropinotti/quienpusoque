@@ -1,4 +1,4 @@
-import { expect, test as base, type Page } from "@playwright/test";
+import { expect, test as base, type Locator, type Page } from "@playwright/test";
 
 /**
  * Fixture común: falla el test si la página tira errores de JS o de consola.
@@ -26,9 +26,24 @@ export function money(value: string): RegExp {
   return new RegExp(`\\$\\s?${value.replace(".", "\\.")}`);
 }
 
+/** Cada cosa que puso: [qué, cuánto salió]. Con un monto suelto, qué = "". */
+export type ContributionInput = [what: string, amount: string];
+
+/** Carga las cosas en las filas de "¿Qué puso?", sumando filas si hace falta. */
+export async function fillContributions(form: Locator, items: ContributionInput[]) {
+  for (const [index, [what, amount]] of items.entries()) {
+    const number = index + 1;
+    if (index > 0 && (await form.getByLabel(`Qué puso (ítem ${number})`).count()) === 0) {
+      await form.getByRole("button", { name: "Sumar otra cosa" }).click();
+    }
+    await form.getByLabel(`Qué puso (ítem ${number})`).fill(what);
+    await form.getByLabel(`Cuánto salió (ítem ${number})`).fill(amount);
+  }
+}
+
 export async function addFamily(
   page: Page,
-  family: { name: string; members: number; type?: "Adulto" | "Menor"; amount?: string; notes?: string }
+  family: { name: string; members: number; type?: "Adulto" | "Menor"; items?: ContributionInput[] }
 ) {
   const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Agregar familia" }) });
   await form.getByLabel("Nombre", { exact: true }).fill(family.name);
@@ -36,8 +51,7 @@ export async function addFamily(
     .getByRole("button", { name: family.members === 1 ? "1 integrante" : `${family.members} integrantes`, exact: true })
     .click();
   if (family.type) await form.getByRole("button", { name: family.type }).click();
-  if (family.amount !== undefined) await form.getByLabel("Monto pagado").fill(family.amount);
-  if (family.notes) await form.getByLabel("Nota o detalle (opcional)").fill(family.notes);
+  if (family.items) await fillContributions(form, family.items);
   await form.getByRole("button", { name: "Agregar familia" }).click();
 }
 

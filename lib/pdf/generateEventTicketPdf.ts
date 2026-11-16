@@ -1,9 +1,14 @@
 import { jsPDF } from "jspdf";
 import type { EventTicketPdfData } from "@/types/pdf";
 import type { BalanceStatus } from "@/types/calculation";
-import type { Family, SplitMode } from "@/types/family";
+import type { ContributionItem, Family, SplitMode } from "@/types/family";
+import {
+  getContributionItems,
+  getContributionLabel,
+} from "@/lib/calculations/contributions";
 import { formatCurrency } from "@/lib/formatting/formatCurrency";
 import { formatMediumDateTime } from "@/lib/formatting/formatDate";
+import { buildEventFileName } from "@/lib/formatting/fileName";
 import { TICKET_PHOTO_SLOT_MM } from "./ticketPhoto";
 
 const PAGE_WIDTH = 210;
@@ -28,23 +33,6 @@ const COLOR = {
   blue: "#0b5a8a",
   amber: "#8a5a00",
 };
-
-function slugify(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 70);
-}
-
-function fileDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 function modeLabel(mode: SplitMode): string {
   return mode === "by-family" ? "por familia" : "por persona";
@@ -197,38 +185,86 @@ function addSummaryGrid(doc: jsPDF, data: EventTicketPdfData, y: number): number
   return y + 2;
 }
 
-function addFamiliesTable(doc: jsPDF, data: EventTicketPdfData, y: number): number {
-  const headers = ["Familia", "Int.", "Tipo", "Pagó", "Cuota", "Balance", "Estado"];
-  const widths = [42, 10, 16, 30, 30, 30, 30];
-  const rowHeight = 7;
+const TABLE_HEADERS = ["Familia", "Int.", "Tipo", "Pagó", "Cuota", "Balance", "Estado"];
+const TABLE_WIDTHS = [42, 10, 16, 30, 30, 30, 30];
+const TABLE_ROW_HEIGHT = 7;
+const ITEM_LINE_HEIGHT = 3.4;
+const ITEM_ROW_PADDING = 1.4;
+const ITEM_INDENT = 4;
+const ITEM_BULLET_WIDTH = 2;
+/** El detalle ocupa Familia + Int. + Tipo; el monto cae en la columna "Pagó". */
+const ITEM_TEXT_WIDTH =
+  TABLE_WIDTHS[0] + TABLE_WIDTHS[1] + TABLE_WIDTHS[2] - ITEM_INDENT - ITEM_BULLET_WIDTH - 4;
+const PAID_COLUMN_X =
+  MARGIN + 2 + TABLE_WIDTHS[0] + TABLE_WIDTHS[1] + TABLE_WIDTHS[2];
 
-  y = ensureSpace(doc, y, rowHeight * 2);
+interface ItemRow {
+  lines: string[];
+  amount: string;
+  height: number;
+}
+
+/** Cada cosa que puso la familia, ya partida en renglones para medir la fila. */
+function layoutItemRows(doc: jsPDF, items: ContributionItem[], currency: string): ItemRow[] {
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(6.4);
+
+  return items.map((item) => {
+    const lines = doc.splitTextToSize(getContributionLabel(item), ITEM_TEXT_WIDTH);
+    return {
+      lines,
+      amount: formatCurrency(item.amount, currency),
+      height: lines.length * ITEM_LINE_HEIGHT,
+    };
+  });
+}
+
+function addTableHeader(doc: jsPDF, y: number): number {
   doc.setFillColor(COLOR.stone950);
-  doc.rect(MARGIN, y, CONTENT_WIDTH, rowHeight, "F");
+  doc.rect(MARGIN, y, CONTENT_WIDTH, TABLE_ROW_HEIGHT, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.setTextColor("#ffffff");
 
   let x = MARGIN + 2;
-  headers.forEach((header, index) => {
+  TABLE_HEADERS.forEach((header, index) => {
     doc.text(header, x, y + 5);
-    x += widths[index];
+    x += TABLE_WIDTHS[index];
   });
-  y += rowHeight;
+  return y + TABLE_ROW_HEIGHT;
+}
 
+function addFamiliesTable(doc: jsPDF, data: EventTicketPdfData, y: number): number {
   // Índice por id: antes cada fila hacía un find() sobre todas las familias
   // (O(n²), el clásico N+1 aplicado a un array).
   const familiesById = new Map(
     data.families.map((family) => [family.id, family])
   );
 
-  data.balances.forEach((balance, index) => {
+  // Se mide todo antes de dibujar: así el encabezado nunca queda solo al pie.
+  const groups = data.balances.map((balance) => {
     const family = familiesById.get(balance.familyId);
-    y = ensureSpace(doc, y, rowHeight * 2);
+    const itemRows = family
+      ? layoutItemRows(doc, getContributionItems(family), data.currency)
+      : [];
+    const itemsHeight = itemRows.reduce((sum, row) => sum + row.height, 0);
+    const height =
+      TABLE_ROW_HEIGHT + (itemRows.length > 0 ? itemsHeight + ITEM_ROW_PADDING : 0);
+    return { balance, family, itemRows, itemsHeight, height };
+  });
+
+  y = ensureSpace(doc, y, TABLE_ROW_HEIGHT + (groups[0]?.height ?? TABLE_ROW_HEIGHT));
+  y = addTableHeader(doc, y);
+
+  groups.forEach(({ balance, family, itemRows, itemsHeight, height }, index) => {
+    // La familia y su detalle no se parten entre hojas. Si hay salto, se
+    // repite el encabezado para que la tabla se siga leyendo.
+    const nextY = ensureSpace(doc, y, height);
+    if (nextY !== y) y = addTableHeader(doc, nextY);
 
     if (index % 2 === 0) {
       doc.setFillColor(COLOR.paperRow);
-      doc.rect(MARGIN, y, CONTENT_WIDTH, rowHeight, "F");
+      doc.rect(MARGIN, y, CONTENT_WIDTH, height, "F");
     }
 
     const row = [
@@ -241,21 +277,38 @@ function addFamiliesTable(doc: jsPDF, data: EventTicketPdfData, y: number): numb
       statusLabel(balance.status),
     ];
 
-    x = MARGIN + 2;
+    let x = MARGIN + 2;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.6);
     doc.setTextColor(COLOR.stone700);
 
     row.forEach((cell, cellIndex) => {
-      const maxWidth = widths[cellIndex] - 2;
+      const maxWidth = TABLE_WIDTHS[cellIndex] - 2;
       const text = doc.splitTextToSize(cell, maxWidth)[0] ?? "";
+      if (cellIndex === 0 || cellIndex === 3) doc.setFont("helvetica", "bold");
       if (cellIndex === 6) doc.setTextColor(statusColor(balance.status));
       doc.text(text, x, y + 5);
+      if (cellIndex === 0 || cellIndex === 3) doc.setFont("helvetica", "normal");
       if (cellIndex === 6) doc.setTextColor(COLOR.stone700);
-      x += widths[cellIndex];
+      x += TABLE_WIDTHS[cellIndex];
     });
 
-    y += rowHeight;
+    y += TABLE_ROW_HEIGHT;
+
+    if (itemRows.length > 0) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(6.4);
+      doc.setTextColor(COLOR.stone500);
+      let itemY = y + ITEM_LINE_HEIGHT - 1.2;
+      for (const itemRow of itemRows) {
+        // Viñeta aparte: si el detalle ocupa dos renglones, el segundo queda alineado.
+        doc.text("·", MARGIN + 2 + ITEM_INDENT, itemY);
+        doc.text(itemRow.lines, MARGIN + 2 + ITEM_INDENT + ITEM_BULLET_WIDTH, itemY);
+        doc.text(itemRow.amount, PAID_COLUMN_X, itemY);
+        itemY += itemRow.height;
+      }
+      y += itemsHeight + ITEM_ROW_PADDING;
+    }
   });
 
   return y + 7;
@@ -343,11 +396,11 @@ export function buildEventTicketPdfFileName(
   eventName: string,
   generatedAt: Date
 ): string {
-  const eventSlug = slugify(eventName) || "evento";
-  return `quien-puso-que-${eventSlug}-${fileDate(generatedAt)}.pdf`;
+  return buildEventFileName(eventName, generatedAt, "pdf");
 }
 
-export function generateEventTicketPdf(data: EventTicketPdfData): void {
+/** Arma el documento sin descargarlo (lo usan la descarga y los tests). */
+export function buildEventTicketPdf(data: EventTicketPdfData): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   let y = MARGIN;
 
@@ -389,5 +442,11 @@ export function generateEventTicketPdf(data: EventTicketPdfData): void {
   addClosingNote(doc, y);
 
   addFooter(doc);
-  doc.save(buildEventTicketPdfFileName(data.eventName, data.generatedAt));
+  return doc;
+}
+
+export function generateEventTicketPdf(data: EventTicketPdfData): void {
+  buildEventTicketPdf(data).save(
+    buildEventTicketPdfFileName(data.eventName, data.generatedAt)
+  );
 }

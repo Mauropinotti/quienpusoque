@@ -1,6 +1,7 @@
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { ArrowRightIcon, FlameIcon, LockIcon, SparkIcon } from "@/components/ui/icons";
 import { SettlementTicket } from "@/components/results/SettlementTicket";
+import { buildContributionsById } from "@/lib/calculations/contributions";
 import { DEMO_EVENT_NAME, DEMO_FAMILIES } from "@/lib/flow/demoEvent";
 import { deriveSettlement } from "@/lib/flow/eventInsights";
 
@@ -79,6 +80,7 @@ export function Hero() {
               eventName={DEMO_EVENT_NAME}
               currency="ARS"
               settlement={sample}
+              contributions={buildContributionsById(DEMO_FAMILIES)}
               variant="preview"
               dateLabel="sáb · 21:47 · 5 familias"
               headingLevel="h2"

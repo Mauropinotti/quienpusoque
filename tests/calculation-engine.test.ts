@@ -31,7 +31,7 @@ function family(overrides: Partial<Family>): Family {
     members: overrides.members ?? 2,
     singleMemberType: overrides.singleMemberType ?? null,
     paidAmount: overrides.paidAmount ?? 0,
-    notes: overrides.notes,
+    ...(overrides.items ? { items: overrides.items } : {}),
   };
 }
 
@@ -325,6 +325,7 @@ describe("generateWhatsappText", () => {
       eventName: "Asado del sábado",
       currency: "ARS",
       splitMode: "by-family",
+      families: demoFamilies,
       balances: result.data.balances,
       transfers,
     });

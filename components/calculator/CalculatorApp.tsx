@@ -4,16 +4,19 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { nanoid } from "nanoid";
 
+import type { EventSnapshot } from "@/types/event";
 import type { Family, SplitMode } from "@/types/family";
 import type { EventTicketPhoto } from "@/types/pdf";
 import { bootstrapFlow } from "@/lib/flow/bootstrapFlow";
 import { buildClosedEvent } from "@/lib/flow/closedEvent";
 import { eventFlowReducer, type FlowStep } from "@/lib/flow/eventFlow";
 import { deriveEventInsights, deriveSettlement } from "@/lib/flow/eventInsights";
+import { buildEventSnapshot } from "@/lib/exchange/eventFile";
 import { saveClosedEvent } from "@/lib/storage/closedEventsStorage";
 import { useEventDraft } from "@/hooks/useEventDraft";
 
 import { EventSetupCard } from "@/components/event/EventSetupCard";
+import { ExportEventButton } from "@/components/event/ExportEventButton";
 import { FamilyForm } from "@/components/families/FamilyForm";
 import { FamilyList } from "@/components/families/FamilyList";
 import { StepHeader } from "./StepHeader";
@@ -131,6 +134,15 @@ export function CalculatorApp() {
     () => dispatch({ type: "demo-loaded", now: new Date().toISOString() }),
     []
   );
+  const handleImport = useCallback(
+    (event: EventSnapshot) => dispatch({ type: "event-imported", event }),
+    []
+  );
+  const getSnapshot = useCallback(
+    () =>
+      buildEventSnapshot({ eventData, selectedMode, recommendationAccepted, createdAt }),
+    [createdAt, eventData, recommendationAccepted, selectedMode]
+  );
   const handleAddFamily = useCallback(
     (data: Omit<Family, "id">) =>
       dispatch({ type: "family-added", family: { ...data, id: nanoid(8) } }),
@@ -192,6 +204,16 @@ export function CalculatorApp() {
   }, [clearDraft]);
 
   const hasCurrentDraft = eventName.trim().length > 0 || families.length > 0;
+  const exportAction = useMemo(
+    () => <ExportEventButton getSnapshot={getSnapshot} />,
+    [getSnapshot]
+  );
+  const resultsExportAction = useMemo(
+    () => (
+      <ExportEventButton getSnapshot={getSnapshot} size="lg" fullWidth />
+    ),
+    [getSnapshot]
+  );
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pb-16 pt-6">
@@ -206,6 +228,7 @@ export function CalculatorApp() {
               onEventNameChange={handleRename}
               onNext={goToFamilies}
               onLoadDemo={handleLoadDemo}
+              onImport={handleImport}
               onReset={handleReset}
             />
             {historyList}
@@ -219,7 +242,7 @@ export function CalculatorApp() {
               title={eventName || "Tu evento"}
               onBack={goToSetup}
             />
-            <FamilyForm onSubmit={handleAddFamily} />
+            <FamilyForm currency={currency} onSubmit={handleAddFamily} />
             <FamilyList
               families={families}
               insights={insights}
@@ -227,6 +250,7 @@ export function CalculatorApp() {
               onRemove={handleRemoveFamily}
               onUpdate={handleUpdateFamily}
               onCalculate={handleOpenRecommendation}
+              headerAction={exportAction}
             />
           </>
         )}
@@ -258,6 +282,7 @@ export function CalculatorApp() {
             onSaveClosedEvent={handleSaveClosedEvent}
             onEditFamilies={goToFamilies}
             onReset={handleReset}
+            exportAction={resultsExportAction}
           />
         )}
 

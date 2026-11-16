@@ -1,4 +1,6 @@
 import type { FamilyBalance, Transfer } from "@/types/calculation";
+import type { ContributionItem } from "@/types/family";
+import { getContributionLabel } from "@/lib/calculations/contributions";
 import { getUnitShare, type Settlement } from "@/lib/flow/eventInsights";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
 import { Badge } from "@/components/ui/Badge";
@@ -11,6 +13,8 @@ interface SettlementTicketProps {
   eventName: string;
   currency: string;
   settlement: Settlement;
+  /** Desglose de lo que puso cada familia, por id (ver `buildContributionsById`). */
+  contributions?: ReadonlyMap<string, ContributionItem[]>;
   /** "preview": quién puso + transferencias (landing). "full": balances completos. */
   variant?: "preview" | "full";
   dateLabel?: string;
@@ -18,6 +22,8 @@ interface SettlementTicketProps {
   className?: string;
   headingLevel?: "h2" | "h3";
 }
+
+const NO_CONTRIBUTIONS: ReadonlyMap<string, ContributionItem[]> = new Map();
 
 const MODE_LABEL = {
   "by-family": { mode: "por familia", unit: "c/ familia" },
@@ -28,6 +34,7 @@ export function SettlementTicket({
   eventName,
   currency,
   settlement,
+  contributions = NO_CONTRIBUTIONS,
   variant = "full",
   dateLabel,
   ticketNumber = "0001",
@@ -57,9 +64,17 @@ export function SettlementTicket({
         <Divider />
 
         {variant === "preview" ? (
-          <PaidList balances={settlement.balances} currency={currency} />
+          <PaidList
+            balances={settlement.balances}
+            contributions={contributions}
+            currency={currency}
+          />
         ) : (
-          <BalanceList balances={settlement.balances} currency={currency} />
+          <BalanceList
+            balances={settlement.balances}
+            contributions={contributions}
+            currency={currency}
+          />
         )}
 
         <div className="mt-3 flex items-baseline justify-between gap-3 font-mono">
@@ -105,81 +120,116 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PaidList({
-  balances,
-  currency,
-}: {
+interface ListProps {
   balances: FamilyBalance[];
+  contributions: ReadonlyMap<string, ContributionItem[]>;
   currency: string;
-}) {
+}
+
+/** Vista compacta (landing): el total y, debajo, qué trajo cada uno. */
+function PaidList({ balances, contributions, currency }: ListProps) {
   return (
     <div>
       <SectionLabel>Lo que puso cada uno</SectionLabel>
       <ul className="space-y-1.5 font-mono text-sm">
-        {balances.map((balance) => (
-          <li key={balance.familyId} className="flex items-baseline gap-2">
-            <span className="shrink-0">{balance.name}</span>
-            <span
-              aria-hidden="true"
-              className="min-w-4 flex-1 translate-y-[-3px] border-b-2 border-dotted border-ink/25"
-            />
-            <span className="tabular shrink-0 font-bold">
-              {balance.isEligibleToPay
-                ? formatMoney(balance.paidAmount, currency)
-                : "invitado"}
-            </span>
-          </li>
-        ))}
+        {balances.map((balance) => {
+          const items = contributions.get(balance.familyId) ?? [];
+          return (
+            <li key={balance.familyId}>
+              <div className="flex items-baseline gap-2">
+                <span className="shrink-0">{balance.name}</span>
+                <span
+                  aria-hidden="true"
+                  className="min-w-4 flex-1 translate-y-[-3px] border-b-2 border-dotted border-ink/25"
+                />
+                <span className="tabular shrink-0 font-bold">
+                  {balance.isEligibleToPay
+                    ? formatMoney(balance.paidAmount, currency)
+                    : "invitado"}
+                </span>
+              </div>
+              {items.length > 0 && (
+                <p className="text-xs text-muted">
+                  {items.map(getContributionLabel).join(" · ")}
+                </p>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
 
-function BalanceList({
-  balances,
+/** Cada cosa con lo que salió, para que la suma se pueda chequear a ojo. */
+function ContributionLines({
+  items,
   currency,
 }: {
-  balances: FamilyBalance[];
+  items: ContributionItem[];
   currency: string;
 }) {
+  return (
+    <ul className="mt-1.5 space-y-0.5 font-mono text-xs text-ink-soft" data-testid="ticket-items">
+      {items.map((item, index) => (
+        <li key={index} className="flex items-baseline gap-2">
+          <span className="min-w-0 break-words">{getContributionLabel(item)}</span>
+          <span
+            aria-hidden="true"
+            className="min-w-3 flex-1 translate-y-[-3px] border-b border-dotted border-ink/30"
+          />
+          <span className="tabular shrink-0 font-bold text-ink">
+            {formatMoney(item.amount, currency)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function BalanceList({ balances, contributions, currency }: ListProps) {
   return (
     <div>
       <SectionLabel>Cómo quedó cada familia</SectionLabel>
       <ul className="divide-y-2 divide-dashed divide-ink/10">
-        {balances.map((balance) => (
-          <li
-            key={balance.familyId}
-            className="flex items-center justify-between gap-3 py-2.5"
-            data-testid="ticket-balance"
-          >
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="truncate font-bold">{balance.name}</span>
-                <Badge variant={balance.status} />
+        {balances.map((balance) => {
+          const items = contributions.get(balance.familyId) ?? [];
+          return (
+            <li
+              key={balance.familyId}
+              className={`flex justify-between gap-3 py-2.5 ${items.length > 0 ? "items-start" : "items-center"}`}
+              data-testid="ticket-balance"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="truncate font-bold">{balance.name}</span>
+                  <Badge variant={balance.status} />
+                </div>
+                {items.length > 0 && <ContributionLines items={items} currency={currency} />}
+                <p className={`font-mono text-xs text-muted ${items.length > 0 ? "mt-1.5" : "mt-0.5"}`}>
+                  {balance.isEligibleToPay
+                    ? `puso ${formatMoney(balance.paidAmount, currency)} · le tocaba ${formatMoney(balance.expectedShare, currency)}`
+                    : "menor sin cargo, no entra en el reparto"}
+                </p>
               </div>
-              <p className="mt-0.5 font-mono text-xs text-muted">
-                {balance.isEligibleToPay
-                  ? `puso ${formatMoney(balance.paidAmount, currency)} · le tocaba ${formatMoney(balance.expectedShare, currency)}`
-                  : "menor sin cargo, no entra en el reparto"}
-              </p>
-            </div>
-            {balance.isEligibleToPay && (
-              <span
-                className={[
-                  "tabular shrink-0 font-mono text-base font-black",
-                  balance.status === "receives"
-                    ? "text-chimi"
-                    : balance.status === "pays"
-                      ? "text-morron"
-                      : "text-sky-text",
-                ].join(" ")}
-              >
-                {balance.status === "receives" ? "+" : balance.status === "pays" ? "−" : ""}
-                {formatMoney(Math.abs(balance.balance), currency)}
-              </span>
-            )}
-          </li>
-        ))}
+              {balance.isEligibleToPay && (
+                <span
+                  className={[
+                    "tabular shrink-0 font-mono text-base font-black",
+                    balance.status === "receives"
+                      ? "text-chimi"
+                      : balance.status === "pays"
+                        ? "text-morron"
+                        : "text-sky-text",
+                  ].join(" ")}
+                >
+                  {balance.status === "receives" ? "+" : balance.status === "pays" ? "−" : ""}
+                  {formatMoney(Math.abs(balance.balance), currency)}
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

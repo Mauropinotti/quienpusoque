@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { TICKET_PHOTO_ASPECT } from "@/lib/pdf/ticketPhoto";
-import { addFamily, expect, money, test, waitForCalculator } from "./fixtures";
+import { addFamily, expect, fillContributions, money, test, waitForCalculator } from "./fixtures";
 
 test.describe("calculadora: flujo completo", () => {
   test("de cero a transferencias, WhatsApp, PDF e historial", async ({ page, context, browserName }) => {
@@ -17,12 +17,31 @@ test.describe("calculadora: flujo completo", () => {
     await page.getByRole("button", { name: "Agregar familia" }).click();
     await expect(page.getByText("Poné un nombre para identificarla.")).toBeVisible();
 
-    await addFamily(page, { name: "Los Pérez", members: 4, amount: "12000", notes: "Torta y bebidas" });
-    await addFamily(page, { name: "Los Gómez", members: 2, amount: "0" });
+    // Cada cosa con lo que salió: la app suma el total en vivo.
+    const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Agregar familia" }) });
+    await fillContributions(form, [
+      ["Torta", "8000"],
+      ["Bebidas", "3500"],
+      ["Hielo", ""],
+    ]);
+    await expect(form.getByTestId("family-form-total")).toHaveText(money("11.500"));
+    await form.getByLabel("Nombre", { exact: true }).fill("Los Pérez");
+    await form.getByRole("button", { name: "4 integrantes", exact: true }).click();
+    await form.getByRole("button", { name: "Agregar familia" }).click();
+    // Una cosa sin monto no se cuela como $0: se marca en su fila.
+    await expect(form.getByText("¿Cuánto salió? Si no costó nada, poné 0.")).toBeVisible();
+    await form.getByLabel("Cuánto salió (ítem 3)").fill("500");
+    await expect(form.getByTestId("family-form-total")).toHaveText(money("12.000"));
+    await form.getByRole("button", { name: "Agregar familia" }).click();
+
+    await addFamily(page, { name: "Los Gómez", members: 2, items: [["", "0"]] });
     await addFamily(page, { name: "Juli", members: 1, type: "Menor" });
 
     await expect(page.getByTestId("family-card")).toHaveCount(3);
     await expect(page.getByTestId("families-total")).toHaveText(money("12.000"));
+    const perez = page.getByTestId("family-card").filter({ hasText: "Los Pérez" });
+    await expect(perez.getByTestId("family-items").getByRole("listitem")).toHaveCount(3);
+    await expect(perez.getByTestId("family-items")).toContainText("Hielo");
     await expect(page.getByTestId("family-card").filter({ hasText: "Juli" })).toContainText("No aporta");
 
     // Paso 3: recomendación + elección manual.
@@ -42,6 +61,9 @@ test.describe("calculadora: flujo completo", () => {
     await expect(ticket.getByTestId("ticket-transfer")).toHaveCount(1);
     await expect(ticket.getByTestId("ticket-transfer")).toContainText("Los Gómez");
     await expect(ticket.getByTestId("ticket-transfer")).toContainText(money("4.000"));
+    // Todo queda expuesto: cada cosa que puso Los Pérez con su monto.
+    const perezItems = ticket.getByTestId("ticket-balance").filter({ hasText: "Los Pérez" }).getByTestId("ticket-items");
+    await expect(perezItems.getByRole("listitem")).toHaveText([/Torta.*8\.000/, /Bebidas.*3\.500/, /Hielo.*500/]);
 
     // WhatsApp: el texto llega al portapapeles.
     await page.getByRole("button", { name: "Copiar resumen para WhatsApp" }).click();
@@ -50,6 +72,9 @@ test.describe("calculadora: flujo completo", () => {
       const clipboard = await page.evaluate(() => navigator.clipboard.readText());
       expect(clipboard).toContain("Cumple de Juli");
       expect(clipboard).toMatch(/Los Gómez le transfiere \$\s?4\.000 a Los Pérez/);
+      expect(clipboard).toContain("Lo que puso cada uno:");
+      expect(clipboard).toMatch(/· Torta: \$\s?8\.000/);
+      expect(clipboard).toMatch(/· Hielo: \$\s?500/);
     }
 
     // PDF: se descarga un archivo PDF real, generado en el navegador.
@@ -59,6 +84,7 @@ test.describe("calculadora: flujo completo", () => {
     expect(download.suggestedFilename()).toMatch(/^quien-puso-que-cumple-de-juli-\d{4}-\d{2}-\d{2}\.pdf$/);
     const pdf = await readFile(await download.path());
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.toString("latin1")).toContain("Torta");
 
     // Historial.
     await page.getByRole("button", { name: "Guardar en el historial" }).click();
@@ -88,9 +114,21 @@ test.describe("calculadora: flujo completo", () => {
     const garcia = page.getByTestId("family-card").filter({ hasText: "Los García" });
     await garcia.getByRole("button", { name: /Editar/ }).click();
     const editForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Guardar cambios" }) });
-    await editForm.getByLabel("Monto pagado").fill("10000");
+    // Trae el desglose cargado: Carne 6.500 + Carbón 1.500.
+    await expect(editForm.getByLabel("Qué puso (ítem 2)")).toHaveValue("Carbón");
+    await editForm.getByRole("button", { name: "Sumar otra cosa" }).click();
+    await expect(editForm.getByLabel("Qué puso (ítem 3)")).toBeFocused();
+    await fillContributions(editForm, [["Carne", "6500"], ["Carbón", "1500"], ["Chorizos", "2000"]]);
+    await expect(editForm.getByTestId("family-form-total")).toHaveText(money("10.000"));
     await editForm.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(page.getByTestId("families-total")).toHaveText(money("18.000"));
+    await expect(garcia.getByTestId("family-items")).toContainText("Chorizos");
+
+    // Quitar una cosa recalcula el total de la familia.
+    await garcia.getByRole("button", { name: /Editar/ }).click();
+    await editForm.getByRole("button", { name: "Quitar ítem 3" }).click();
+    await editForm.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByTestId("families-total")).toHaveText(money("16.000"));
 
     const lopez = page.getByTestId("family-card").filter({ hasText: "Los López" });
     await lopez.getByRole("button", { name: /Eliminar/ }).click();
@@ -154,6 +192,63 @@ test.describe("calculadora: flujo completo", () => {
       h: img.naturalHeight,
     }));
     expect(size.w / size.h).toBeCloseTo(TICKET_PHOTO_ASPECT, 1);
+  });
+});
+
+test.describe("exportar e importar", () => {
+  test("baja el cálculo a un archivo y lo retoma desde el paso 1", async ({ page }) => {
+    await page.goto("/calcular?demo=1");
+    await waitForCalculator(page);
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Exportar cálculo" }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^quien-puso-que-asado-del-sabado-\d{4}-\d{2}-\d{2}\.json$/);
+    const exported = JSON.parse(await readFile(await download.path(), "utf8"));
+    expect(exported.format).toBe("quien-puso-que/calculo");
+    expect(exported.event.families).toHaveLength(5);
+    expect(exported.event.families[0].items).toEqual([
+      { description: "Carne", amount: 6500 },
+      { description: "Carbón", amount: 1500 },
+    ]);
+
+    // Cuenta nueva desde cero.
+    await page.getByRole("button", { name: "Volver" }).click();
+    await page.getByRole("button", { name: "Empezar de nuevo" }).click();
+    await expect(page.getByLabel("Nombre del evento")).toHaveValue("");
+
+    // Un archivo cualquiera no rompe nada.
+    const fileInput = page.getByLabel("Seleccionar archivo de cálculo para importar");
+    await fileInput.setInputFiles({ name: "lista.json", mimeType: "application/json", buffer: Buffer.from('{"hola":1}') });
+    await expect(page.getByRole("alert").filter({ hasText: "no es un cálculo" })).toBeVisible();
+
+    // El archivo exportado retoma todo, con el desglose.
+    await fileInput.setInputFiles(await download.path());
+    await expect(page.getByRole("heading", { level: 1, name: "Asado del sábado" })).toBeVisible();
+    await expect(page.getByTestId("family-card")).toHaveCount(5);
+    await expect(page.getByTestId("families-total")).toHaveText(money("16.000"));
+    await expect(
+      page.getByTestId("family-card").filter({ hasText: "Los Fernández" }).getByTestId("family-items")
+    ).toContainText("Hielo");
+  });
+
+  test("pide confirmación antes de pisar una cuenta en curso", async ({ page }) => {
+    await page.goto("/calcular?demo=1");
+    await waitForCalculator(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Exportar cálculo" }).click();
+    const file = await (await downloadPromise).path();
+
+    await page.getByRole("button", { name: "Volver" }).click();
+    await page.getByLabel("Nombre del evento").fill("Otra juntada");
+    await page.getByLabel("Seleccionar archivo de cálculo para importar").setInputFiles(file);
+    await expect(page.getByText("¿Reemplazamos la cuenta en curso?")).toBeVisible();
+    await page.getByRole("button", { name: "Mejor no" }).click();
+    await expect(page.getByLabel("Nombre del evento")).toHaveValue("Otra juntada");
+
+    await page.getByLabel("Seleccionar archivo de cálculo para importar").setInputFiles(file);
+    await page.getByRole("button", { name: "Sí, importar" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Asado del sábado" })).toBeVisible();
   });
 });
 

@@ -127,7 +127,8 @@ Transferencias:
 
 ## Ejemplo 5: texto para WhatsApp
 
-Salida esperada aproximada:
+Con el asado de ejemplo (`lib/flow/demoEvent.ts`), donde cada familia cargó
+cada cosa con lo que salió. Salida esperada aproximada:
 
 ```text
 Asado del sábado
@@ -135,6 +136,17 @@ Asado del sábado
 Gasto total: $16.000
 Criterio usado: reparto por familia
 Cuota por familia: $4.000
+
+Lo que puso cada uno:
+- Los García: $8.000
+   · Carne: $6.500
+   · Carbón: $1.500
+- Los Rodríguez: $3.000 (Bebidas)
+- Los López: $0
+- Los Fernández: $5.000
+   · Ensaladas: $2.500
+   · Pan: $1.200
+   · Hielo: $1.300
 
 Transferencias sugeridas:
 - Los López le transfiere $4.000 a Los García
@@ -156,7 +168,24 @@ Nota: Cada familia habilitada aporta una parte igual del gasto total.
 Calculado con ¿Quién puso qué?
 ```
 
-## Ejemplo 6: redondeo
+## Ejemplo 6: total desde el detalle
+
+Los Pérez cargan cada cosa con lo que salió:
+
+| Qué puso | Cuánto salió |
+|---|---:|
+| Carne | $10.000 |
+| Hielo | $2.000 |
+| Pan | $1.500,50 |
+
+```text
+paidAmount = 10.000 + 2.000 + 1.500,50 = 13.500,50
+```
+
+El total lo calcula la app (`sumContributionItems`); el usuario no lo tipea.
+A partir de ahí, el reparto usa `paidAmount` como en los ejemplos anteriores.
+
+## Ejemplo 7: redondeo
 
 | Familia | Integrantes | Pagó |
 |---|---:|---:|
@@ -183,7 +212,7 @@ Transferencias enteras:
 
 Puede quedar una discrepancia de $1 por redondeo. Es esperable.
 
-## Ejemplo 7: evento cerrado guardado en historial
+## Ejemplo 8: evento cerrado guardado en historial
 
 Después de confirmar el resultado del **Asado del sábado**, el usuario toca `Guardar en el historial`.
 
@@ -216,7 +245,7 @@ Ese evento aparece en el historial del inicio con:
 
 Si se borra desde el historial, solo se elimina esa copia cerrada. El borrador actual no se modifica.
 
-## Ejemplo 8: ticket PDF
+## Ejemplo 9: ticket PDF
 
 Después de revisar resultados, el usuario puede tocar `Descargar ticket PDF`.
 
@@ -242,7 +271,10 @@ Se usó reparto por familia según la recomendación o elección del usuario.
 
 Familias
 Los García | 4 | pagó $8.000 | cuota $4.000 | cobra $4.000
+  · Carne          $6.500
+  · Carbón         $1.500
 Los Rodríguez | 2 | pagó $3.000 | cuota $4.000 | paga $1.000
+  · Bebidas        $3.000
 Los Martínez | 1 menor | no aporta
 
 Transferencias sugeridas

@@ -1,6 +1,9 @@
 import type { Family } from "@/types/family";
 
-/** Evento de ejemplo: lo usan la landing (ticket de muestra) y el botón de demo. */
+/**
+ * Evento de ejemplo: lo usan la landing (ticket de muestra) y el botón de demo.
+ * Cada `paidAmount` es la suma de sus `items`.
+ */
 export const DEMO_EVENT_NAME = "Asado del sábado";
 
 export const DEMO_FAMILIES: Family[] = [
@@ -10,7 +13,10 @@ export const DEMO_FAMILIES: Family[] = [
     members: 4,
     singleMemberType: null,
     paidAmount: 8000,
-    notes: "Carne y carbón",
+    items: [
+      { description: "Carne", amount: 6500 },
+      { description: "Carbón", amount: 1500 },
+    ],
   },
   {
     id: "demo-rodriguez",
@@ -18,7 +24,7 @@ export const DEMO_FAMILIES: Family[] = [
     members: 2,
     singleMemberType: null,
     paidAmount: 3000,
-    notes: "Bebidas",
+    items: [{ description: "Bebidas", amount: 3000 }],
   },
   {
     id: "demo-lopez",
@@ -40,6 +46,10 @@ export const DEMO_FAMILIES: Family[] = [
     members: 3,
     singleMemberType: null,
     paidAmount: 5000,
-    notes: "Ensaladas",
+    items: [
+      { description: "Ensaladas", amount: 2500 },
+      { description: "Pan", amount: 1200 },
+      { description: "Hielo", amount: 1300 },
+    ],
   },
 ];

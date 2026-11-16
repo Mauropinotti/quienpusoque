@@ -1,11 +1,17 @@
 import type { FamilyBalance, Transfer } from "@/types/calculation";
-import type { SplitMode } from "@/types/family";
+import type { Family, SplitMode } from "@/types/family";
+import {
+  buildContributionsById,
+  getContributionLabel,
+} from "@/lib/calculations/contributions";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
 
 interface GenerateOptions {
   eventName: string;
   currency: string;
   splitMode: SplitMode;
+  /** Para el desglose de lo que puso cada familia. */
+  families: Family[];
   balances: FamilyBalance[];
   transfers: Transfer[];
 }
@@ -29,10 +35,43 @@ function getPerFamilyShare(balances: FamilyBalance[]): number {
   return firstEligibleBalance?.expectedShare ?? 0;
 }
 
+/**
+ * "- Los García: $ 8.000" y debajo cada cosa con lo que salió. Con una sola
+ * cosa va en la misma línea: "- Los Rodríguez: $ 3.000 (Bebidas)".
+ */
+function getContributionLines(
+  balances: FamilyBalance[],
+  families: Family[],
+  currency: string
+): string[] {
+  const contributions = buildContributionsById(families);
+  const lines: string[] = [];
+
+  for (const balance of balances) {
+    if (balance.status === "guest") continue;
+
+    const items = contributions.get(balance.familyId) ?? [];
+    const total = `- ${balance.name}: ${formatMoney(balance.paidAmount, currency)}`;
+
+    if (items.length === 1) {
+      lines.push(`${total} (${getContributionLabel(items[0])})`);
+      continue;
+    }
+
+    lines.push(total);
+    for (const item of items) {
+      lines.push(`   · ${getContributionLabel(item)}: ${formatMoney(item.amount, currency)}`);
+    }
+  }
+
+  return lines;
+}
+
 export function generateWhatsappText({
   eventName,
   currency,
   splitMode,
+  families,
   balances,
   transfers,
 }: GenerateOptions): string {
@@ -67,6 +106,11 @@ export function generateWhatsappText({
     `${shareLabel}: ${formatMoney(shareAmount, currency)}`,
     "",
   ];
+
+  const contributionLines = getContributionLines(balances, families, currency);
+  if (contributionLines.length > 0) {
+    lines.push("Lo que puso cada uno:", ...contributionLines, "");
+  }
 
   if (transfers.length > 0) {
     lines.push("Transferencias sugeridas:");

@@ -162,6 +162,25 @@ estaban los equivalentes.
   real (no se genera en runtime).
 - **Íconos de UI**: SVG inline de pocos bytes, sin librería.
 
+### Desglose de lo que puso cada uno + exportar/importar
+
+Medido con `scripts/perf/network.mjs` contra el build anterior (`66b7b12`),
+mismo instrumental:
+
+| Ruta | JS inicial | JS después del load |
+|---|---:|---:|
+| `/calcular` antes | 165,7 KB | 21,1 KB |
+| **`/calcular` ahora** | **167,8 KB** (+2,1 KB) | 23,3 KB (+2,2 KB) |
+| landing `/` | 159,3 KB (sin cambios, 0 KB propios) | 12,6 KB |
+
+- El paso 1 suma la tarjeta de importar y su validación (`lib/exchange`), que
+  reutiliza los validadores del borrador; la descarga del archivo no usa
+  dependencias.
+- El formulario de familias y el ticket no agregan estado global: la suma en
+  vivo es una función pura sobre los valores del formulario y el desglose del
+  ticket se indexa una vez con `useMemo` sobre `families`.
+- jsPDF sigue fuera de la carga inicial.
+
 ## Experimentos descartados
 
 | Experimento | Resultado | Decisión |

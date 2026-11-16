@@ -20,7 +20,30 @@ Este documento describe las reglas canónicas de **¿Quién puso qué?**. Si una
 - `members`
 - `singleMemberType`
 - `paidAmount`
-- `notes`
+- `items` (opcional): desglose de lo que puso, `{ description, amount }[]`
+
+## Lo que puso cada familia
+
+Cada familia carga **cada cosa con lo que salió** ("Carne $ 10.000", "Hielo
+$ 2.000") y la app calcula el total:
+
+```text
+paidAmount = suma de items[].amount   (redondeada a centavos)
+```
+
+- `paidAmount` es lo único que usa el motor de cálculo. `items` es el
+  respaldo que se muestra en la lista, el ticket, el PDF y el WhatsApp.
+- La suma la hace `sumContributionItems` (`lib/calculations/contributions.ts`).
+  El formulario (`lib/forms/familyForm.ts`) la usa al guardar y el storage
+  (`normalizeFamily` en `lib/storage/validators.ts`) la vuelve a calcular al
+  leer un borrador o un archivo importado: nunca se confía en un total guardado.
+- Un único monto sin descripción es solo un total: se guarda sin `items`.
+- Una cosa con descripción y sin monto es un error de esa fila (si no costó
+  nada, se carga 0). Las filas vacías se ignoran; sin ninguna cosa, la
+  familia puso $0.
+- Máximo `MAX_CONTRIBUTION_ITEMS` (12) cosas por familia.
+- Versiones anteriores guardaban una nota libre (`notes`). Al leerla se
+  convierte en el único ítem, con el total que tenía la familia.
 
 ## Resultado
 
@@ -57,7 +80,7 @@ Una familia no elegible queda con:
 - `balance = paidAmount`
 - `status = "guest"`
 
-Un menor solo siempre tiene `paidAmount = 0`. El formulario bloquea el monto cuando se elige 1 menor, `validateFamily` rechaza otro valor con `GUEST_PAID_AMOUNT` y, al recuperar un borrador viejo que lo traiga cargado, `localEventStorage` lo pone en 0. Así ningún monto queda sin reintegrar.
+Un menor solo siempre tiene `paidAmount = 0` y no tiene desglose. El formulario bloquea el monto cuando se elige 1 menor, `validateFamily` rechaza otro valor con `GUEST_PAID_AMOUNT` y, al recuperar un borrador viejo o un archivo importado que lo traiga cargado, `normalizeFamily` lo pone en 0. Así ningún monto queda sin reintegrar.
 
 ## Reparto por familia
 

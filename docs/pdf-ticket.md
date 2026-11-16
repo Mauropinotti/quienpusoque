@@ -9,7 +9,7 @@ Crear un documento compartible e imprimible con el resumen completo del evento:
 - datos generales
 - criterio usado
 - recomendación de la app
-- familias y balances
+- familias y balances, con el detalle de lo que puso cada una
 - familias no aportantes
 - transferencias sugeridas
 - nota de cierre
@@ -50,6 +50,11 @@ sobre el botón), así el click no espera la descarga. Los datos del ticket se
 arman al hacer click (`getData`), de modo que la fecha de generación es la del
 momento de la descarga.
 
+`buildEventTicketPdf(data)` arma el documento y lo devuelve sin descargarlo
+(lo usan los tests para leer el contenido); `generateEventTicketPdf(data)` lo
+arma y lo descarga. El nombre del archivo sale de `lib/formatting/fileName.ts`,
+compartido con el cálculo exportado.
+
 Tipos:
 
 ```text
@@ -58,8 +63,11 @@ types/pdf.ts
 
 ## Estructura del PDF
 
-El diseño usa la misma paleta que la app (papel, brasa y carbón) y, con foto
-y hasta 5 o 6 familias, entra en una sola hoja A4.
+El diseño usa la misma paleta que la app (papel, brasa y carbón). Sin foto,
+6 familias con varias cosas cada una entran en una sola hoja A4. Con foto, el
+detalle de lo que puso cada uno puede llevar las transferencias a una segunda
+hoja (el asado de ejemplo ocupa 2): se priorizó que cada cosa se lea con su
+monto antes que comprimir el detalle.
 
 1. Encabezado en tinta con el nombre de la app y acento de brasa.
 2. Nombre del evento.
@@ -77,10 +85,13 @@ y hasta 5 o 6 familias, entra en una sola hoja A4.
    - nombre
    - integrantes
    - adulto / menor si corresponde
-   - monto pagado
+   - monto pagado (en negrita, igual que el nombre)
    - cuota correspondiente
    - balance
    - estado
+   - debajo de cada familia, cada cosa que puso ("· Carne") con su monto en
+     la columna "Pagó", así la suma se puede chequear a ojo. Las
+     descripciones largas siguen en el renglón de abajo con sangría.
 8. Familias no aportantes.
 9. Transferencias sugeridas.
 10. Nota de cierre, como pie discreto sin título, que termina con
@@ -88,8 +99,10 @@ y hasta 5 o 6 familias, entra en una sola hoja A4.
 11. Pie de página: `desarrollado por MauroHP - Lista 127 8B 2026.-`
 
 Los títulos de sección reservan lugar para su primer bloque: nunca quedan
-huérfanos al pie de una hoja. La tabla de familias usa un `Map` por id para
-cruzar balances con familias (antes era un `find()` por fila).
+huérfanos al pie de una hoja. Una familia nunca se separa de su detalle y, si
+la tabla sigue en otra hoja, repite el encabezado. La tabla de familias usa
+un `Map` por id para cruzar balances con familias (antes era un `find()` por
+fila).
 
 ## Foto opcional
 

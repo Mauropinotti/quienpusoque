@@ -54,6 +54,8 @@ Objetivo: crear el evento.
 - Sugerencias rápidas: Asado del sábado, Cumple, Escapada, Cena de fin de año.
 - Botón `Cargar familias` (deshabilitado sin nombre).
 - Tarjeta `Probar con datos de ejemplo`.
+- Tarjeta `¿Tenés un cálculo guardado?` con `Importar cálculo`: carga un
+  archivo exportado antes y retoma la cuenta (ver "Exportar e importar").
 - Si hay borrador: aviso y `Empezar de nuevo`.
 - Historial de cuentas cerradas debajo.
 
@@ -66,15 +68,23 @@ Formulario `Sumá una familia`:
 - nombre
 - integrantes del 1 al 5 (botones con puntitos)
 - selector Adulto/Menor si tiene 1 integrante
-- monto pagado con prefijo `$` (bloqueado en $0 si es 1 menor); acepta coma o punto decimal
-- nota o detalle opcional
-- los errores aparecen al intentar agregar, no mientras se tipea
+- **¿Qué puso?**: una fila por cosa, con `Qué puso` y `Cuánto salió` (prefijo
+  `$`, acepta coma o punto decimal). `Sumar otra cosa` agrega una fila (hasta
+  12) y lleva el foco a ella; el tacho la quita.
+- `Total que puso` se calcula en vivo con la suma de las filas: el usuario no
+  lo tipea.
+- 1 menor: en lugar de las filas, `Monto pagado` bloqueado en $0.
+- en el celular cada fila ocupa dos renglones (qué / cuánto); desde `sm`, uno
+- los errores aparecen al intentar agregar, no mientras se tipea; una cosa sin
+  monto se marca en su propia fila
 
 La validación vive en `lib/forms/familyForm.ts`.
 
 Lista `En la mesa`:
 
-- tarjeta por familia con avatar, integrantes, nota y monto
+- tarjeta por familia con avatar, integrantes, total y, debajo, cada cosa
+  con su monto
+- `Exportar cálculo` junto al título (si hay al menos una familia)
 - badge `No aporta` para menor solo
 - edición inline y eliminación con confirmación
 - avisos si no hay gasto o falta una familia que aporte
@@ -105,12 +115,14 @@ Reglas:
 Objetivo: cerrar la cuenta.
 
 - Título `¡Cuenta cerrada!`.
-- El ticket: balances por familia con su estado, total, criterio con cuota
-  unitaria y **Quién le pasa a quién** con las transferencias numeradas.
+- El ticket: balances por familia con su estado y el detalle de lo que puso
+  (cada cosa con su monto), total, criterio con cuota unitaria y **Quién le
+  pasa a quién** con las transferencias numeradas.
 - Bloque `Compartir y cerrar`:
   - `Copiar resumen para WhatsApp`
   - `Descargar ticket PDF`
   - foto opcional del evento
+  - `Exportar cálculo`
   - `Guardar en el historial`
 - `Editar familias` y `Nuevo evento` (este último pide confirmación).
 
@@ -122,6 +134,9 @@ Badges:
 - `No aporta`
 
 ## Copiar para WhatsApp
+
+El resumen incluye **Lo que puso cada uno**: cada familia que aporta con su
+total y, debajo, cada cosa con su monto (una sola cosa va en la misma línea).
 
 El botón usa `navigator.clipboard` cuando está disponible.
 
@@ -140,6 +155,53 @@ La foto:
 - no se persiste en el borrador
 
 El PDF se genera con datos estructurados del cálculo, no capturando la pantalla. Si no hay foto, se genera igual. Ver `docs/pdf-ticket.md`.
+
+## Exportar e importar
+
+Para seguir una cuenta otro día o en otro dispositivo, sin servidor.
+
+- `Exportar cálculo` (paso 2, junto a `En la mesa`, y en `Compartir y
+  cerrar`) baja `quien-puso-que-{evento}-{yyyy-mm-dd}.json` con el estado en
+  curso: nombre, moneda, familias con su desglose, criterio elegido y
+  confirmado, y fecha de creación. No incluye la foto ni el historial.
+- `Importar cálculo` (paso 1) lee ese archivo. Si ya hay una cuenta en curso,
+  pide confirmación antes de reemplazarla. Lo importado se retoma en la carga
+  de familias y pasa a ser el borrador.
+- Todo el archivo se valida antes de tocar el estado (`lib/exchange/eventFile.ts`):
+  formato y versión, moneda, fechas, familias, ids únicos y desglose. Los
+  totales se recalculan desde el desglose. Si algo no cierra, no se carga nada
+  y se explica por qué.
+
+Formato:
+
+```json
+{
+  "format": "quien-puso-que/calculo",
+  "version": 1,
+  "exportedAt": "2026-11-16T15:00:00.000Z",
+  "event": {
+    "eventName": "Asado del sábado",
+    "currency": "ARS",
+    "createdAt": "2026-11-16T14:30:00.000Z",
+    "splitMode": null,
+    "selectedMode": "by-family",
+    "recommendationAccepted": null,
+    "families": [
+      {
+        "id": "demo-garcia",
+        "name": "Los García",
+        "members": 4,
+        "singleMemberType": null,
+        "paidAmount": 8000,
+        "items": [
+          { "description": "Carne", "amount": 6500 },
+          { "description": "Carbón", "amount": 1500 }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ## Persistencia local del borrador
 
@@ -221,7 +283,8 @@ Si `localStorage` está vacío, se muestra un estado vacío y el flujo principal
 - El historial solo existe en el navegador actual.
 - El PDF se descarga localmente; no hay almacenamiento remoto.
 - La foto del PDF no se guarda para futuras sesiones.
-- No hay sincronización entre dispositivos.
+- No hay sincronización entre dispositivos: para pasar una cuenta de un
+  celular a otro se exporta el archivo y se importa en el otro.
 - No hay modo offline formal, aunque el borrador local ayuda si la página ya cargó.
 
 ## Ayuda para usuarios
@@ -230,7 +293,8 @@ La página `/ayuda` explica:
 
 - qué hace la app
 - cómo crear un evento
-- cómo cargar familias
+- cómo cargar familias y lo que puso cada una
+- cómo exportar e importar un cálculo
 - reglas para adulto / menor
 - quién paga y quién no paga
 - diferencia entre reparto por familia y por persona

@@ -26,12 +26,13 @@ components/history/         historial de cuentas cerradas
 components/help/            ayuda visible para usuarios finales
 components/ui/              Button, ButtonLink, Input, Card, Badge, íconos
 hooks/                      hooks cliente (persistencia del borrador)
-lib/calculations/           funciones puras de cálculo
+lib/calculations/           funciones puras de cálculo (incluye la suma de lo que puso cada uno)
 lib/flow/                   reducer del flujo, derivados, arranque, demo
 lib/forms/                  validación del formulario de familias
 lib/image/                  preparación de la foto del ticket
-lib/formatting/             moneda y porcentaje
+lib/formatting/             moneda, porcentaje, fechas y nombres de archivo
 lib/storage/                localStorage defensivo
+lib/exchange/               exportar / importar el cálculo como archivo .json
 lib/text/                   texto para WhatsApp
 lib/pdf/                    ticket PDF final
 types/                      contratos compartidos
@@ -60,6 +61,7 @@ components/calculator/CalculatorApp.tsx
 - `by-person`: partes iguales por persona habilitada.
 - `balance = paidAmount - expectedShare`.
 - `status` lo calcula `calculateBalances`; la UI no lo recalcula.
+- `paidAmount = suma de items[].amount` (`lib/calculations/contributions.ts`). El total no se tipea: lo calcula `lib/forms` al cargar y `normalizeFamily` al leer storage o un archivo importado.
 
 ## Rendimiento
 
@@ -79,6 +81,10 @@ Todo acceso debe ser cliente, defensivo y validado. Si storage falla, la app sig
 
 Usar siempre `lib/storage/browserStorage.ts` (sondeo cacheado). El borrador se escribe con debounce desde `hooks/useEventDraft.ts`; el historial vive en un store en memoria (`useSyncExternalStore`).
 
+## Exportar / importar
+
+El cálculo en curso se exporta como `.json` (`format: "quien-puso-que/calculo"`, `version: 1`) y se importa desde el paso 1. `lib/exchange/eventFile.ts` valida el archivo entero antes de tocar el estado: o entra todo o no entra nada. Si cambia el formato, subir `version` y aceptar las anteriores. No incluye foto ni historial. Detalle en `docs/ux-flow.md`.
+
 ## PDF final
 
 El ticket PDF se genera con `jsPDF` en `lib/pdf/generateEventTicketPdf.ts`.
@@ -96,7 +102,7 @@ Reglas:
 
 - No meter fórmulas en componentes.
 - No acceder a `localStorage` durante SSR.
-- No usar datos recuperados de storage sin validar.
+- No usar datos recuperados de storage ni de archivos importados sin validar.
 - No cambiar `types/` sin actualizar consumers.
 - No persistir imágenes del ticket en historial sin decisión explícita.
 - No poner lógica de cálculo dentro de la ayuda; solo describe el funcionamiento.

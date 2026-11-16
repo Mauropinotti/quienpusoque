@@ -3,6 +3,7 @@
 import { memo, useCallback, useState } from "react";
 import type { Family } from "@/types/family";
 import { isSingleMinor } from "@/lib/calculations/eligibility";
+import { getContributionItems, getContributionLabel } from "@/lib/calculations/contributions";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -49,6 +50,7 @@ export const FamilyCard = memo(function FamilyCard({
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const isGuest = isSingleMinor(family);
+  const items = getContributionItems(family);
 
   const handleSubmit = useCallback(
     (data: Omit<Family, "id">) => {
@@ -66,6 +68,7 @@ export const FamilyCard = memo(function FamilyCard({
           initialFamily={family}
           title={`Editar ${family.name}`}
           submitLabel="Guardar cambios"
+          currency={currency}
           onCancel={handleCancel}
           onSubmit={handleSubmit}
         />
@@ -96,9 +99,6 @@ export const FamilyCard = memo(function FamilyCard({
             </span>
             {memberLabel(family)}
           </p>
-          {family.notes && (
-            <p className="mt-1 line-clamp-2 text-sm italic text-ink-soft">“{family.notes}”</p>
-          )}
         </div>
 
         <div className="shrink-0 text-right">
@@ -110,6 +110,27 @@ export const FamilyCard = memo(function FamilyCard({
           </p>
         </div>
       </div>
+
+      {items.length > 0 && (
+        <ul
+          aria-label={`Lo que puso ${family.name}`}
+          className="mt-3 space-y-1 border-t-2 border-dashed border-ink/15 pt-2 font-mono text-sm text-ink-soft sm:pl-15"
+          data-testid="family-items"
+        >
+          {items.map((item, index) => (
+            <li key={index} className="flex items-baseline gap-2">
+              <span className="min-w-0 break-words">{getContributionLabel(item)}</span>
+              <span
+                aria-hidden="true"
+                className="min-w-4 flex-1 translate-y-[-3px] border-b-2 border-dotted border-ink/20"
+              />
+              <span className="tabular shrink-0 font-bold text-ink">
+                {formatMoney(item.amount, currency)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {isConfirmingDelete ? (
         <div role="alert" className="mt-4 rounded-xl border-2 border-morron bg-morron-soft p-3">

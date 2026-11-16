@@ -18,10 +18,10 @@ Termina la juntada. Una familia compró carne, otra llevó bebidas, alguien pag�
 
 ![Flujo en el celular: evento, familias, criterio y ticket](docs/screenshots/flujo-movil.jpg)
 
-1. **Evento**: le ponés nombre a la juntada.
-2. **Familias**: quién vino, cuántos son y cuánto puso. Un menor que viene solo no aporta.
+1. **Evento**: le ponés nombre a la juntada, o importás un cálculo que exportaste antes y seguís donde lo dejaste.
+2. **Familias**: quién vino, cuántos son y qué puso cada uno, cosa por cosa ("carne $10.000", "hielo $2.000"). La app suma el total. Un menor que viene solo no aporta.
 3. **Criterio**: la app recomienda repartir por familia o por persona, explica por qué y muestra cuánto le tocaría a cada uno con cada criterio. Decidís vos.
-4. **Ticket**: balances, transferencias numeradas, copiar para WhatsApp, PDF y guardar en el historial.
+4. **Ticket**: balances con el detalle de lo que puso cada uno, transferencias numeradas, copiar para WhatsApp, PDF, exportar el cálculo y guardar en el historial.
 
 La ayuda para usuarios está en `/ayuda`.
 
@@ -34,8 +34,9 @@ La ayuda para usuarios está en `/ayuda`.
 | **Rendimiento medido** | 16 teclas en un input pasaban de 48 operaciones de `localStorage` a 1; agregar una familia, de 33 renders a 10. Landing sin JS propio, pasos con carga diferida y jsPDF por intención. Detalle y metodología en [`docs/performance.md`](docs/performance.md). |
 | **Lighthouse móvil** | Performance 98–99 y **100** en accesibilidad, buenas prácticas y SEO en las tres rutas. CLS 0. |
 | **Sin flash al volver** | Si hay una cuenta a medio hacer, un script inline decide antes del primer paint qué mostrar; nunca se ve el paso 1 para después saltar. |
-| **Probado de punta a punta** | 50 tests unitarios (Vitest) y 24 E2E (Playwright, móvil y desktop) sobre el build de producción: portapapeles, descarga y validación del PDF, recarga inmediata, teclado, recorte de foto. Un error de consola hace fallar el test. |
-| **Privacidad por diseño** | El cálculo, el borrador, el historial y la foto del ticket nunca salen del navegador. |
+| **Probado de punta a punta** | 76 tests unitarios (Vitest) y 28 E2E (Playwright, móvil y desktop) sobre el build de producción: portapapeles, descarga y validación del PDF, exportar e importar el cálculo, recarga inmediata, teclado, recorte de foto. Un error de consola hace fallar el test. |
+| **Cuentas a la vista** | Cada familia carga qué puso y cuánto salió cada cosa; el total lo calcula la app y el desglose aparece en el ticket, el PDF y el WhatsApp. |
+| **Privacidad por diseño** | El cálculo, el borrador, el historial y la foto del ticket nunca salen del navegador. El cálculo exportado es un archivo que guarda el usuario. |
 
 ## Reglas de negocio
 
@@ -50,6 +51,13 @@ La regla vive en `lib/calculations/eligibility.ts`.
 | 2 o más integrantes | Sí | cantidad de integrantes |
 
 Una familia de 1 menor queda como **no aportante**: no paga, no cobra y no genera transferencias. Por eso el formulario bloquea su monto en $0.
+
+### Lo que puso cada uno
+
+Cada familia carga cada cosa con lo que salió y la app calcula el total:
+`paidAmount = suma de items[].amount` (`lib/calculations/contributions.ts`).
+El reparto usa ese total; el desglose es el respaldo que se muestra en todas
+las salidas.
 
 ### Por familia o por persona
 
@@ -138,17 +146,18 @@ app/                  rutas: landing, /calcular, /ayuda, metadatos, íconos
 components/
   landing/            secciones de la landing (Server Components)
   calculator/         CalculatorApp: estado y flujo; fallback; stepper
-  event/ families/    pasos 1 y 2
+  event/ families/    pasos 1 y 2 (incluye importar y exportar el cálculo)
   recommendation/     paso 3
   results/            ticket, WhatsApp, PDF
   history/ help/      historial y ayuda
   ui/ layout/         primitivas, íconos, header, footer
 hooks/                persistencia del borrador
 lib/
-  calculations/       motor de cálculo (puro)
+  calculations/       motor de cálculo (puro), suma de lo que puso cada uno
   flow/               reducer del flujo y derivados
   forms/ image/ pdf/  validación, foto, PDF
   storage/            acceso defensivo a localStorage
+  exchange/           exportar e importar el cálculo como archivo .json
   text/ formatting/   WhatsApp, moneda, fechas
 types/                contratos
 tests/  e2e/          unitarios y E2E
@@ -193,13 +202,15 @@ Si el entorno ya tiene un Chromium, `PLAYWRIGHT_CHROMIUM_PATH=/ruta/a/chrome npm
 - [x] Resumen para WhatsApp con fallback de copiado.
 - [x] Borrador e historial locales.
 - [x] Ticket PDF con foto opcional.
+- [x] Desglose de lo que puso cada uno, con total calculado por la app.
+- [x] Exportar e importar el cálculo en curso para retomarlo después.
 - [x] Ayuda para usuarios finales.
 - [x] Tests unitarios y E2E.
 - [x] Accesibilidad AA (Lighthouse 100).
 
 ## Roadmap
 
-- Exportar o compartir eventos cerrados.
+- Exportar o compartir eventos cerrados del historial (el cálculo en curso ya se exporta).
 - Modo offline con service worker.
 - Soporte opcional para más monedas.
 - Monitoreo de errores en producción (Sentry con carga diferida).

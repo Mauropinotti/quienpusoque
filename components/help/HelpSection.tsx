@@ -28,6 +28,10 @@ export function HelpSection() {
       <HelpStepCard number="01" title="Creá el evento">
         <p>Primero indicá el nombre del evento: “Asado del sábado”, “Cumple de Juli”, “Tercer tiempo” o “Cena familiar”.</p>
         <p>Ese nombre aparece en el resultado, en WhatsApp y en el ticket PDF.</p>
+        <p>
+          ¿Ya habías empezado y exportaste el cálculo? Tocá{" "}
+          <strong>Importar cálculo</strong> y elegí el archivo: seguís donde lo dejaste.
+        </p>
       </HelpStepCard>
 
       <HelpStepCard number="02" title="Cargá las familias">
@@ -35,10 +39,21 @@ export function HelpSection() {
         <ul className="list-disc space-y-1 pl-5">
           <li>nombre</li>
           <li>cantidad de integrantes</li>
-          <li>cuánto dinero pagó</li>
-          <li>una nota opcional</li>
+          <li>qué puso y cuánto salió cada cosa</li>
         </ul>
-        <p>Si una familia no pagó nada, cargás monto cero.</p>
+        <p>
+          Por ejemplo: carne $10.000, hielo $2.000, pan $1.500. Con{" "}
+          <strong>Sumar otra cosa</strong> agregás una línea. El total lo suma la
+          app: no hace falta hacer la cuenta.
+        </p>
+        <p>
+          Si una familia no puso nada, dejás las líneas vacías. Si llevó algo que
+          no costó plata, ponés 0.
+        </p>
+        <p>
+          Cada cosa con su monto aparece en el ticket, en el PDF y en el resumen
+          de WhatsApp, para que todos vean qué salió cada cosa.
+        </p>
       </HelpStepCard>
 
       <HelpStepCard title="Un solo integrante" tone="mustard">
@@ -103,11 +118,26 @@ export function HelpSection() {
           <li>Resumen para WhatsApp.</li>
           <li>Ticket PDF completo.</li>
           <li>Evento cerrado en el historial local del navegador.</li>
+          <li>Archivo del cálculo, para retomarlo después.</li>
         </ul>
         <p>
           El ticket PDF funciona como cierre del cálculo y se puede compartir con
           los participantes.
         </p>
+      </HelpStepCard>
+
+      <HelpStepCard title="Exportar e importar">
+        <p>
+          ¿Tenés que cortar a la mitad o querés seguir desde otro celular? Tocá{" "}
+          <strong>Exportar cálculo</strong>: baja un archivo con todo lo cargado,
+          incluido lo que puso cada uno.
+        </p>
+        <p>
+          Para retomarlo, en el primer paso tocá <strong>Importar cálculo</strong>{" "}
+          y elegí ese archivo. Si ya tenías otra cuenta abierta, la app te pregunta
+          antes de reemplazarla.
+        </p>
+        <p>La foto del ticket y el historial no viajan en el archivo.</p>
       </HelpStepCard>
 
       <HelpStepCard title="Privacidad" tone="sky">
@@ -118,6 +148,10 @@ export function HelpSection() {
         <p>
           Si cargás una foto para el ticket PDF, se usa localmente para generar el
           archivo. No se sube a ningún servidor.
+        </p>
+        <p>
+          El archivo exportado se guarda donde vos elijas. La app no lo sube a
+          ningún lado.
         </p>
       </HelpStepCard>
 

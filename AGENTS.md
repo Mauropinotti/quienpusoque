@@ -26,11 +26,12 @@
 - `lib/forms/`: validación del formulario de familias.
 - `lib/image/`: recorte y compresión de la foto del ticket.
 - `types/`: contratos TypeScript entre capas.
-- `lib/calculations/`: funciones puras de elegibilidad, recomendación, balances y transferencias.
+- `lib/calculations/`: funciones puras de elegibilidad, recomendación, balances, transferencias y suma de lo que puso cada familia (`contributions.ts`).
 - `lib/formatting/`: formateo de moneda y porcentajes.
 - `lib/text/`: generación de texto para WhatsApp.
 - `lib/pdf/`: generación estructurada del ticket PDF final.
 - `lib/storage/`: acceso defensivo a `localStorage`.
+- `lib/exchange/`: exportar e importar el cálculo en curso como archivo `.json` (validación completa antes de cargar).
 - `hooks/`: coordinación cliente, por ejemplo `useEventDraft`.
 - `docs/`: documentación funcional y técnica (incluye `docs/performance.md`).
 - `tests/`: unitarios. `e2e/`: flujos reales con Playwright. `scripts/perf/`: medición.
@@ -44,6 +45,7 @@
 - `by-family`: divide el total por familias habilitadas.
 - `by-person`: divide el total por personas habilitadas.
 - `balance = paidAmount - expectedShare`.
+- `paidAmount = suma de items[].amount`: el total lo calcula la app (`lib/calculations/contributions.ts`), nunca se tipea ni se confía en uno guardado.
 - El `status` canónico (`receives`, `pays`, `balanced`, `guest`) se calcula en `calculateBalances` y la UI no debe reinterpretarlo.
 
 ## Storage local
@@ -64,7 +66,7 @@ Reglas:
 
 - Acceder siempre vía `lib/storage/browserStorage.ts`.
 - Solo acceder a `localStorage` del lado cliente.
-- Validar todo dato recuperado antes de usarlo.
+- Validar todo dato recuperado (storage o archivo importado) antes de usarlo.
 - No romper SSR ni hydration.
 - Si `localStorage` falla, la app debe seguir funcionando.
 - No guardar información sensible.
@@ -101,7 +103,7 @@ Reglas:
 - Recomendación: `README.md`, `docs/recommendation-criteria.md`.
 - Flujo o UI: `README.md`, `docs/ux-flow.md`.
 - Rendimiento: `docs/performance.md`.
-- Storage: `README.md`, `docs/ux-flow.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`.
+- Storage o formato del archivo exportado: `README.md`, `docs/ux-flow.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`.
 - PDF: `README.md`, `docs/pdf-ticket.md`, `docs/ux-flow.md`, `docs/examples.md`.
 - Ayuda de usuario: `README.md`, `docs/ux-flow.md`, `components/help/`.
 

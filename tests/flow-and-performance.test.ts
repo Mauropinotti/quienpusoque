@@ -33,7 +33,7 @@ function family(overrides: Partial<Family>): Family {
     members: overrides.members ?? 2,
     singleMemberType: overrides.singleMemberType ?? null,
     paidAmount: overrides.paidAmount ?? 0,
-    notes: overrides.notes,
+    ...(overrides.items ? { items: overrides.items } : {}),
   };
 }
 
@@ -436,13 +436,19 @@ describe("buildClosedEvent", () => {
 });
 
 describe("parseFamilyForm", () => {
-  it("valida nombre, tipo de integrante y monto", async () => {
+  it("valida nombre, tipo de integrante y cada cosa cargada", async () => {
     const { emptyFamilyFormValues, parseFamilyForm } = await import("@/lib/forms/familyForm");
 
-    const result = parseFamilyForm({ ...emptyFamilyFormValues(), members: 1 });
+    const values = emptyFamilyFormValues();
+    const result = parseFamilyForm({
+      ...values,
+      members: 1,
+      items: [{ ...values.items[0], description: "Hielo", amount: "" }],
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(Object.keys(result.errors).sort()).toEqual(["name", "paidAmount", "singleMemberType"]);
+      expect(Object.keys(result.errors).sort()).toEqual(["items", "name", "singleMemberType"]);
+      expect(result.errors.items?.[values.items[0].key]).toMatch(/Cuánto salió/);
     }
   });
 
@@ -453,12 +459,11 @@ describe("parseFamilyForm", () => {
       name: " Juli ",
       members: 1,
       singleMemberType: "minor",
-      paidAmount: "999",
-      notes: "",
+      items: [{ key: "1", description: "Globos", amount: "999" }],
     });
     expect(minor).toEqual({
       ok: true,
-      family: { name: "Juli", members: 1, singleMemberType: "minor", paidAmount: 0, notes: undefined },
+      family: { name: "Juli", members: 1, singleMemberType: "minor", paidAmount: 0, items: undefined },
     });
     expect(parseAmount("2500,5")).toBe(2500.5);
     expect(parseAmount("-1")).toBeNull();

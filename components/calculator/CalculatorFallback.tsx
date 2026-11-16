@@ -39,6 +39,7 @@ export function CalculatorFallback() {
               onEventNameChange={noop}
               onNext={noop}
               onLoadDemo={noop}
+              onImport={noop}
               onReset={noop}
             />
           </div>
