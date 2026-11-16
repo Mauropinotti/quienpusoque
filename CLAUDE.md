@@ -54,11 +54,13 @@ components/calculator/CalculatorApp.tsx
 
 ## Reglas clave
 
-- 1 adulto aporta.
-- 1 menor no aporta.
-- 2 o más integrantes aportan.
-- `by-family`: partes iguales por familia habilitada.
-- `by-person`: partes iguales por persona habilitada.
+- Cada familia tiene `adults` y `minors` explícitos (0 a 20, al menos una persona).
+- Con al menos 1 adulto aporta; sin adultos no aporta y sus menores no cuentan.
+- `by-family`: partes iguales por familia que aporta.
+- `by-person`: partes iguales por persona (adultos y menores igual).
+- `by-person-minors-half`: cada menor paga 50% de la parte por persona; lo que no pagan se reparte en partes iguales entre los adultos.
+- `by-person-minors-zero`: total ÷ adultos; los menores no pagan.
+- Los pasos salen de `calculateShareBreakdown` (`SplitBreakdown`) y sus textos de `lib/text/describeSplit.ts`: ticket, PDF y WhatsApp los muestran iguales. La recomendación elige la base (`SplitBasis`), no cuánto pagan los menores.
 - `balance = paidAmount - expectedShare`.
 - `status` lo calcula `calculateBalances`; la UI no lo recalcula.
 - `paidAmount = suma de items[].amount` (`lib/calculations/contributions.ts`). El total no se tipea: lo calcula `lib/forms` al cargar y `normalizeFamily` al leer storage o un archivo importado.

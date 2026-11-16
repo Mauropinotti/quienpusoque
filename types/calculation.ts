@@ -11,7 +11,6 @@ export type ValidationErrorCode =
   | "NO_ELIGIBLE_FAMILIES"
   | "NEGATIVE_PAID_AMOUNT"
   | "MEMBERS_OUT_OF_RANGE"
-  | "MISSING_SINGLE_MEMBER_TYPE"
   | "GUEST_PAID_AMOUNT"
   | "NULL_SPLIT_MODE";
 
@@ -36,12 +35,44 @@ export interface FamilyBalance {
   eligiblePersons: number;
 }
 
+/**
+ * Cómo se llegó a la parte de cada uno, paso a paso. Lo calcula
+ * `calculateShareBreakdown` y lo muestran el ticket, el WhatsApp y el PDF.
+ * Cada monto es el resultado redondeado a centavos de una operación sobre los
+ * montos anteriores, así las cuentas que se muestran cierran a la vista.
+ */
+export interface SplitBreakdown {
+  splitMode: SplitMode;
+  totalAmount: number;
+  /** Familias con al menos un adulto. */
+  contributingFamilies: number;
+  /** Adultos de las familias que aportan. */
+  adults: number;
+  /** Menores de las familias que aportan. */
+  minors: number;
+  /** `by-family`: lo que pone cada familia. 0 en los criterios por persona. */
+  familyShare: number;
+  /** Criterios por persona: total ÷ (adultos + menores). */
+  personShare: number;
+  /** Parte de la cuota que paga cada menor: 1, 0,5 o 0. */
+  minorRatio: number;
+  /** Lo que paga cada menor. */
+  minorShare: number;
+  /** Lo que dejan de pagar entre todos los menores (solo menores al 50%). */
+  minorsUnpaid: number;
+  /** Lo que suma cada adulto por lo que no pagan los menores (solo 50%). */
+  adultSurcharge: number;
+  /** Lo que paga cada adulto. */
+  adultShare: number;
+}
+
 export interface CalculationOutput {
   totalAmount: number;
   eligibleFamilyCount: number;
   eligiblePersonCount: number;
   splitMode: SplitMode;
   balances: FamilyBalance[];
+  breakdown: SplitBreakdown;
 }
 
 export type CalculationResult =

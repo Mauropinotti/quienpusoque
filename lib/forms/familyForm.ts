@@ -1,12 +1,14 @@
-import type { ContributionItem, Family, SingleMemberType } from "@/types/family";
-import { isSingleMinor } from "@/lib/calculations/eligibility";
+import type { ContributionItem, Family } from "@/types/family";
+import {
+  MAX_PEOPLE_PER_KIND,
+  getPeopleCount,
+  isGuestFamily,
+} from "@/lib/calculations/eligibility";
 import {
   MAX_CONTRIBUTION_ITEMS,
   sumContributionItems,
   toContributionFields,
 } from "@/lib/calculations/contributions";
-
-export const MEMBER_OPTIONS = [1, 2, 3, 4, 5] as const;
 
 export const CONTRIBUTION_DESCRIPTION_MAX_LENGTH = 40;
 
@@ -21,14 +23,16 @@ export interface ContributionRowValues {
 
 export interface FamilyFormValues {
   name: string;
-  members: number;
-  singleMemberType: SingleMemberType;
+  adults: number;
+  minors: number;
   items: ContributionRowValues[];
 }
 
+export type PeopleKind = "adults" | "minors";
+
 export interface FamilyFormErrors {
   name?: string;
-  singleMemberType?: string;
+  people?: string;
   /** Errores por fila, indexados por `ContributionRowValues.key`. */
   items?: Record<string, string>;
 }
@@ -50,8 +54,8 @@ function nextRowKey(rows: readonly ContributionRowValues[]): string {
 export function emptyFamilyFormValues(): FamilyFormValues {
   return {
     name: "",
-    members: 2,
-    singleMemberType: null,
+    adults: 2,
+    minors: 0,
     items: [contributionRow("1")],
   };
 }
@@ -66,15 +70,28 @@ export function familyToFormValues(family: Family): FamilyFormValues {
 
   return {
     name: family.name,
-    members: family.members,
-    singleMemberType: family.singleMemberType,
+    adults: family.adults,
+    minors: family.minors,
     items,
   };
 }
 
-/** Un menor que viene solo no aporta: su monto queda fijo en 0. */
-export function isFamilyAmountLocked(values: Pick<FamilyFormValues, "members" | "singleMemberType">): boolean {
-  return isSingleMinor(values);
+/** Sin adultos la familia no aporta: su monto queda fijo en 0. */
+export function isFamilyAmountLocked(values: Pick<FamilyFormValues, "adults" | "minors">): boolean {
+  return isGuestFamily(values);
+}
+
+// ── Adultos y menores ─────────────────────────────────────────────────────────
+
+export function canChangePeople(values: FamilyFormValues, kind: PeopleKind, delta: number): boolean {
+  const next = values[kind] + delta;
+  return next >= 0 && next <= MAX_PEOPLE_PER_KIND;
+}
+
+/** Suma o resta una persona, siempre dentro de 0 y el tope. */
+export function changePeople(values: FamilyFormValues, kind: PeopleKind, delta: number): FamilyFormValues {
+  if (!canChangePeople(values, kind, delta)) return values;
+  return { ...values, [kind]: values[kind] + delta };
 }
 
 /** Deja solo dígitos, coma y punto mientras se tipea un monto. */
@@ -152,8 +169,8 @@ export function parseFamilyForm(values: FamilyFormValues): FamilyFormResult {
   if (values.name.trim() === "") {
     errors.name = "Poné un nombre para identificarla.";
   }
-  if (values.members === 1 && values.singleMemberType === null) {
-    errors.singleMemberType = "Indicá si es adulto o menor.";
+  if (getPeopleCount(values) < 1) {
+    errors.people = "Sumá al menos un adulto o un menor.";
   }
 
   if (!amountLocked) {
@@ -180,8 +197,8 @@ export function parseFamilyForm(values: FamilyFormValues): FamilyFormResult {
     ok: true,
     family: {
       name: values.name.trim(),
-      members: values.members,
-      singleMemberType: values.members === 1 ? values.singleMemberType : null,
+      adults: values.adults,
+      minors: values.minors,
       ...toContributionFields(items),
     },
   };

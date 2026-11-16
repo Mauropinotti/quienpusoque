@@ -2,7 +2,8 @@
 
 import { memo, useCallback, useState } from "react";
 import type { Family } from "@/types/family";
-import { isSingleMinor } from "@/lib/calculations/eligibility";
+import { isGuestFamily } from "@/lib/calculations/eligibility";
+import { describeComposition } from "@/lib/text/describeSplit";
 import { getContributionItems, getContributionLabel } from "@/lib/calculations/contributions";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
 import { Badge } from "@/components/ui/Badge";
@@ -34,11 +35,6 @@ function avatarInitial(name: string): string {
   return (word?.[0] ?? "?").toUpperCase();
 }
 
-function memberLabel(family: Family): string {
-  if (family.members > 1) return `${family.members} integrantes`;
-  return family.singleMemberType === "adult" ? "1 adulto" : "1 menor";
-}
-
 // memo: al agregar o editar una familia, solo se re-renderiza la tarjeta que
 // cambió (antes se re-renderizaban todas).
 export const FamilyCard = memo(function FamilyCard({
@@ -49,7 +45,7 @@ export const FamilyCard = memo(function FamilyCard({
 }: FamilyCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
-  const isGuest = isSingleMinor(family);
+  const isGuest = isGuestFamily(family);
   const items = getContributionItems(family);
 
   const handleSubmit = useCallback(
@@ -92,12 +88,16 @@ export const FamilyCard = memo(function FamilyCard({
             {isGuest && <Badge variant="guest" />}
           </div>
           <p className="mt-0.5 flex items-center gap-2 text-sm text-ink-soft">
-            <span aria-hidden="true" className="flex gap-0.5">
-              {Array.from({ length: family.members }, (_, i) => (
-                <span key={i} className="h-2 w-2 rounded-full bg-ink/70" />
+            {/* Adultos: puntos llenos. Menores: puntos chicos color mostaza. */}
+            <span aria-hidden="true" className="flex max-w-24 flex-wrap items-center gap-0.5">
+              {Array.from({ length: Math.min(family.adults, 10) }, (_, i) => (
+                <span key={`a${i}`} className="h-2 w-2 rounded-full bg-ink/70" />
+              ))}
+              {Array.from({ length: Math.min(family.minors, 10) }, (_, i) => (
+                <span key={`m${i}`} className="h-1.5 w-1.5 rounded-full border border-ink/60 bg-mustard" />
               ))}
             </span>
-            {memberLabel(family)}
+            {describeComposition(family)}
           </p>
         </div>
 

@@ -39,11 +39,14 @@
 
 ## Reglas de negocio
 
-- 1 adulto: aporta, `eligiblePersons = 1`.
-- 1 menor: no aporta, `eligiblePersons = 0`.
-- 2 o más integrantes: aporta, `eligiblePersons = members`.
-- `by-family`: divide el total por familias habilitadas.
-- `by-person`: divide el total por personas habilitadas.
+- Cada familia declara `adults` y `minors` (0 a 20, al menos una persona).
+- Con al menos 1 adulto: aporta, `eligiblePersons = adults + minors`.
+- Sin adultos: no aporta, `eligiblePersons = 0`; sus menores no cuentan.
+- `by-family`: divide el total por familias que aportan.
+- `by-person`: divide el total por adultos + menores, todos iguales.
+- `by-person-minors-half`: cada menor paga 50% de la parte por persona; lo que no pagan se reparte en partes iguales entre los adultos.
+- `by-person-minors-zero`: divide el total solo entre los adultos.
+- Los pasos del reparto (`SplitBreakdown`) se redondean a centavos uno por uno y se muestran iguales en ticket, PDF y WhatsApp (`lib/text/describeSplit.ts`).
 - `balance = paidAmount - expectedShare`.
 - `paidAmount = suma de items[].amount`: el total lo calcula la app (`lib/calculations/contributions.ts`), nunca se tipea ni se confía en uno guardado.
 - El `status` canónico (`receives`, `pays`, `balanced`, `guest`) se calcula en `calculateBalances` y la UI no debe reinterpretarlo.

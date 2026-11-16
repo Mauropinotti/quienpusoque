@@ -5,6 +5,7 @@ import type {
   SplitRecommendation,
 } from "@/types/recommendation";
 import { calculateModeImpact } from "./calculateModeImpact";
+import { getPeopleCount } from "./eligibility";
 
 interface Signal {
   mode: "by-person" | "by-family";
@@ -55,10 +56,10 @@ export function recommendSplitMode(
     0
   );
   const singleAdultCount = eligible.filter(
-    (family) => family.members === 1
+    (family) => family.adults === 1 && family.minors === 0
   ).length;
   const largeFamilyCount = eligible.filter(
-    (family) => family.members >= 3
+    (family) => getPeopleCount(family) >= 3
   ).length;
 
   const singleAdultFamilyRatio = singleAdultCount / eligible.length;
@@ -100,7 +101,7 @@ export function recommendSplitMode(
     signals.push({
       mode: "by-family",
       weight: 2,
-      reason: `La mayoría de las familias tiene entre 3 y 5 integrantes (${pct(largeFamilyRatio)}). Repartir por familia mantiene el cálculo simple para este grupo.`,
+      reason: `La mayoría de las familias son de 3 o más personas (${pct(largeFamilyRatio)}). Repartir por familia mantiene el cálculo simple para este grupo.`,
     });
   }
 

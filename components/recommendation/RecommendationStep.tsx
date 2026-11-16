@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import type { Family, SplitMode } from "@/types/family";
 import type { SplitRecommendation } from "@/types/recommendation";
-import { deriveModeComparison } from "@/lib/flow/eventInsights";
+import { deriveModeComparison, derivePersonModePreviews } from "@/lib/flow/eventInsights";
+import { isPersonSplitMode } from "@/lib/calculations/splitModes";
 import { Button } from "@/components/ui/Button";
 import { ArrowRightIcon } from "@/components/ui/icons";
 import { SplitModeSelector } from "@/components/event/SplitModeSelector";
@@ -17,6 +18,9 @@ interface RecommendationStepProps {
   families: Family[];
   currency: string;
   recommendation: SplitRecommendation;
+  /** Adultos y menores de las familias que aportan. */
+  adultCount: number;
+  minorCount: number;
   selectedMode: SplitMode;
   onModeChange: (mode: SplitMode) => void;
   onConfirm: () => void;
@@ -29,12 +33,20 @@ export function RecommendationStep({
   families,
   currency,
   recommendation,
+  adultCount,
+  minorCount,
   selectedMode,
   onModeChange,
   onConfirm,
   onBack,
 }: RecommendationStepProps) {
-  const comparison = useMemo(() => deriveModeComparison(families), [families]);
+  // La columna "por persona" sigue la respuesta sobre menores elegida.
+  const personMode = isPersonSplitMode(selectedMode) ? selectedMode : "by-person";
+  const comparison = useMemo(
+    () => deriveModeComparison(families, personMode),
+    [families, personMode]
+  );
+  const previews = useMemo(() => derivePersonModePreviews(families), [families]);
 
   return (
     <>
@@ -55,11 +67,23 @@ export function RecommendationStep({
           value={selectedMode}
           onChange={onModeChange}
           recommendedMode={recommendation.recommendedMode}
+          minorCount={minorCount}
+          previews={previews}
+          currency={currency}
         />
       </section>
 
-      <ModeComparison rows={comparison} selectedMode={selectedMode} currency={currency} />
-      <ModeImpactPreview metrics={recommendation.metrics} />
+      <ModeComparison
+        rows={comparison}
+        selectedMode={selectedMode}
+        personMode={personMode}
+        currency={currency}
+      />
+      <ModeImpactPreview
+        metrics={recommendation.metrics}
+        adultCount={adultCount}
+        minorCount={minorCount}
+      />
 
       <div className="sticky bottom-0 z-20 -mx-4 bg-linear-to-t from-paper from-70% to-transparent px-4 pb-3 pt-6">
         <Button fullWidth size="xl" onClick={onConfirm}>

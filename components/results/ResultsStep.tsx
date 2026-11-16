@@ -5,7 +5,8 @@ import type { Family } from "@/types/family";
 import type { EventTicketPdfData, EventTicketPhoto } from "@/types/pdf";
 import type { SplitRecommendation } from "@/types/recommendation";
 import type { Settlement } from "@/lib/flow/eventInsights";
-import { buildContributionsById } from "@/lib/calculations/contributions";
+import { buildFamilyTicketDetails } from "@/lib/flow/ticketDetails";
+import { formatMoney } from "@/lib/formatting/formatCurrency";
 import { formatMediumDateTime } from "@/lib/formatting/formatDate";
 import { generateWhatsappText } from "@/lib/text/generateWhatsappText";
 import { Button } from "@/components/ui/Button";
@@ -55,7 +56,13 @@ export function ResultsStep({
 }: ResultsStepProps) {
   const [dateLabel] = useState(() => formatMediumDateTime(new Date()));
   const [isConfirmingReset, setIsConfirmingReset] = useState(false);
-  const contributions = useMemo(() => buildContributionsById(families), [families]);
+  const details = useMemo(
+    () =>
+      buildFamilyTicketDetails(families, settlement.breakdown, (amount) =>
+        formatMoney(amount, currency)
+      ),
+    [currency, families, settlement.breakdown]
+  );
 
   const getWhatsappText = useCallback(
     () =>
@@ -64,6 +71,7 @@ export function ResultsStep({
         currency,
         splitMode: settlement.splitMode,
         families,
+        breakdown: settlement.breakdown,
         balances: settlement.balances,
         transfers: settlement.transfers,
       }),
@@ -80,6 +88,7 @@ export function ResultsStep({
       families,
       balances: settlement.balances,
       transfers: settlement.transfers,
+      breakdown: settlement.breakdown,
       recommendation,
       photo: ticketPhoto,
     }),
@@ -109,7 +118,7 @@ export function ResultsStep({
           eventName={eventName}
           currency={currency}
           settlement={settlement}
-          contributions={contributions}
+          details={details}
           variant="full"
           dateLabel={dateLabel}
         />

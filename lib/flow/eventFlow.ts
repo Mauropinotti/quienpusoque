@@ -1,7 +1,8 @@
 import type { EventData, EventSnapshot } from "@/types/event";
-import type { Family, SplitMode } from "@/types/family";
+import type { Family, SplitBasis, SplitMode } from "@/types/family";
 import type { EventTicketPhoto } from "@/types/pdf";
 import type { LocalEventDraft } from "@/lib/storage/localEventStorage";
+import { getSplitBasis, isPersonSplitMode } from "@/lib/calculations/splitModes";
 import { DEMO_EVENT_NAME, DEMO_FAMILIES } from "./demoEvent";
 
 /**
@@ -38,9 +39,9 @@ export type EventFlowAction =
   | { type: "family-added"; family: Family }
   | { type: "family-updated"; family: Family }
   | { type: "family-removed"; id: string }
-  | { type: "recommendation-opened"; recommendedMode: SplitMode }
+  | { type: "recommendation-opened"; recommendedMode: SplitBasis }
   | { type: "mode-selected"; mode: SplitMode }
-  | { type: "mode-confirmed"; recommendedMode: SplitMode | null }
+  | { type: "mode-confirmed"; recommendedMode: SplitBasis | null }
   | { type: "closed-event-saved"; id: string }
   | { type: "closed-event-save-failed"; message: string }
   | { type: "ticket-photo-changed"; photo: EventTicketPhoto | null }
@@ -173,7 +174,12 @@ export function eventFlowReducer(
       return {
         ...state,
         step: "recommendation",
-        selectedMode: action.recommendedMode,
+        // Si sugiere por persona y ya habían elegido cómo pagan los menores,
+        // se respeta esa elección.
+        selectedMode:
+          action.recommendedMode === "by-person" && isPersonSplitMode(state.selectedMode)
+            ? state.selectedMode
+            : action.recommendedMode,
         recommendationAccepted: null,
       };
 
@@ -190,8 +196,10 @@ export function eventFlowReducer(
         ...state,
         step: "results",
         eventData: { ...state.eventData, splitMode: state.selectedMode },
+        // Se acepta la sugerencia si coincide la base (familia o persona):
+        // cuánto pagan los menores es una decisión aparte del grupo.
         recommendationAccepted: action.recommendedMode
-          ? state.selectedMode === action.recommendedMode
+          ? getSplitBasis(state.selectedMode) === action.recommendedMode
           : null,
         savedClosedEventId: null,
         historySaveError: "",

@@ -261,6 +261,8 @@ export function CalculatorApp() {
             families={families}
             currency={currency}
             recommendation={recommendation}
+            adultCount={insights.adultCount}
+            minorCount={insights.minorCount}
             selectedMode={selectedMode}
             onModeChange={handleModeChange}
             onConfirm={handleConfirmMode}

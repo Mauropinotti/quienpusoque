@@ -1,8 +1,14 @@
 import type { FamilyBalance, Transfer } from "@/types/calculation";
 import type { ContributionItem } from "@/types/family";
 import { getContributionLabel } from "@/lib/calculations/contributions";
-import { getUnitShare, type Settlement } from "@/lib/flow/eventInsights";
+import type { Settlement } from "@/lib/flow/eventInsights";
+import type { FamilyTicketDetail } from "@/lib/flow/ticketDetails";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
+import {
+  SPLIT_MODE_LABEL,
+  describeSplitSteps,
+  describeUnitShares,
+} from "@/lib/text/describeSplit";
 import { Badge } from "@/components/ui/Badge";
 import { ArrowRightIcon } from "@/components/ui/icons";
 
@@ -13,8 +19,8 @@ interface SettlementTicketProps {
   eventName: string;
   currency: string;
   settlement: Settlement;
-  /** Desglose de lo que puso cada familia, por id (ver `buildContributionsById`). */
-  contributions?: ReadonlyMap<string, ContributionItem[]>;
+  /** Composición, lo que puso y la cuenta de cada familia, por id (ver `buildFamilyTicketDetails`). */
+  details?: ReadonlyMap<string, FamilyTicketDetail>;
   /** "preview": quién puso + transferencias (landing). "full": balances completos. */
   variant?: "preview" | "full";
   dateLabel?: string;
@@ -23,25 +29,21 @@ interface SettlementTicketProps {
   headingLevel?: "h2" | "h3";
 }
 
-const NO_CONTRIBUTIONS: ReadonlyMap<string, ContributionItem[]> = new Map();
-
-const MODE_LABEL = {
-  "by-family": { mode: "por familia", unit: "c/ familia" },
-  "by-person": { mode: "por persona", unit: "c/ persona" },
-} as const;
+const NO_DETAILS: ReadonlyMap<string, FamilyTicketDetail> = new Map();
 
 export function SettlementTicket({
   eventName,
   currency,
   settlement,
-  contributions = NO_CONTRIBUTIONS,
+  details = NO_DETAILS,
   variant = "full",
   dateLabel,
   ticketNumber = "0001",
   className = "",
   headingLevel: Heading = "h2",
 }: SettlementTicketProps) {
-  const labels = MODE_LABEL[settlement.splitMode];
+  const money = (amount: number) => formatMoney(amount, currency);
+  const steps = variant === "full" ? describeSplitSteps(settlement.breakdown, money) : [];
 
   return (
     <div className={`ticket-shadow ${className}`}>
@@ -64,17 +66,9 @@ export function SettlementTicket({
         <Divider />
 
         {variant === "preview" ? (
-          <PaidList
-            balances={settlement.balances}
-            contributions={contributions}
-            currency={currency}
-          />
+          <PaidList balances={settlement.balances} details={details} currency={currency} />
         ) : (
-          <BalanceList
-            balances={settlement.balances}
-            contributions={contributions}
-            currency={currency}
-          />
+          <BalanceList balances={settlement.balances} details={details} currency={currency} />
         )}
 
         <div className="mt-3 flex items-baseline justify-between gap-3 font-mono">
@@ -84,11 +78,28 @@ export function SettlementTicket({
           </span>
         </div>
         <p className="mt-1 text-right font-mono text-xs text-muted">
-          Reparto {labels.mode} ·{" "}
+          Reparto {SPLIT_MODE_LABEL[settlement.splitMode]} ·{" "}
           <span className="font-bold text-ink">
-            {formatMoney(getUnitShare(settlement), currency)} {labels.unit}
+            {describeUnitShares(settlement.breakdown, money)}
           </span>
         </p>
+
+        {steps.length > 0 && (
+          <section aria-label="Cómo se repartió" className="mt-4 rounded-xl border-2 border-dashed border-ink/30 bg-paper px-3 py-2.5">
+            <SectionLabel>Cómo se repartió</SectionLabel>
+            <ol className="space-y-1 font-mono text-xs leading-snug" data-testid="ticket-steps">
+              {steps.map((step) => (
+                // La viñeta va por CSS: no se cuela al copiar ni al leer.
+                <li
+                  key={step}
+                  className="relative break-words pl-4 before:absolute before:left-0 before:text-ember-text before:content-['›']"
+                >
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
 
         <Divider />
 
@@ -122,18 +133,18 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 interface ListProps {
   balances: FamilyBalance[];
-  contributions: ReadonlyMap<string, ContributionItem[]>;
+  details: ReadonlyMap<string, FamilyTicketDetail>;
   currency: string;
 }
 
 /** Vista compacta (landing): el total y, debajo, qué trajo cada uno. */
-function PaidList({ balances, contributions, currency }: ListProps) {
+function PaidList({ balances, details, currency }: ListProps) {
   return (
     <div>
       <SectionLabel>Lo que puso cada uno</SectionLabel>
       <ul className="space-y-1.5 font-mono text-sm">
         {balances.map((balance) => {
-          const items = contributions.get(balance.familyId) ?? [];
+          const items = details.get(balance.familyId)?.items ?? [];
           return (
             <li key={balance.familyId}>
               <div className="flex items-baseline gap-2">
@@ -187,45 +198,51 @@ function ContributionLines({
   );
 }
 
-function BalanceList({ balances, contributions, currency }: ListProps) {
+function BalanceList({ balances, details, currency }: ListProps) {
   return (
     <div>
       <SectionLabel>Cómo quedó cada familia</SectionLabel>
       <ul className="divide-y-2 divide-dashed divide-ink/10">
         {balances.map((balance) => {
-          const items = contributions.get(balance.familyId) ?? [];
+          const detail = details.get(balance.familyId);
+          const items = detail?.items ?? [];
           return (
-            <li
-              key={balance.familyId}
-              className={`flex justify-between gap-3 py-2.5 ${items.length > 0 ? "items-start" : "items-center"}`}
-              data-testid="ticket-balance"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <li key={balance.familyId} className="py-2.5" data-testid="ticket-balance">
+              {/* Nombre y balance arriba; el detalle usa todo el ancho debajo. */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="truncate font-bold">{balance.name}</span>
                   <Badge variant={balance.status} />
                 </div>
-                {items.length > 0 && <ContributionLines items={items} currency={currency} />}
-                <p className={`font-mono text-xs text-muted ${items.length > 0 ? "mt-1.5" : "mt-0.5"}`}>
-                  {balance.isEligibleToPay
-                    ? `puso ${formatMoney(balance.paidAmount, currency)} · le tocaba ${formatMoney(balance.expectedShare, currency)}`
-                    : "menor sin cargo, no entra en el reparto"}
-                </p>
+                {balance.isEligibleToPay && (
+                  <span
+                    className={[
+                      "tabular shrink-0 font-mono text-base font-black",
+                      balance.status === "receives"
+                        ? "text-chimi"
+                        : balance.status === "pays"
+                          ? "text-morron"
+                          : "text-sky-text",
+                    ].join(" ")}
+                  >
+                    {balance.status === "receives" ? "+" : balance.status === "pays" ? "−" : ""}
+                    {formatMoney(Math.abs(balance.balance), currency)}
+                  </span>
+                )}
               </div>
-              {balance.isEligibleToPay && (
-                <span
-                  className={[
-                    "tabular shrink-0 font-mono text-base font-black",
-                    balance.status === "receives"
-                      ? "text-chimi"
-                      : balance.status === "pays"
-                        ? "text-morron"
-                        : "text-sky-text",
-                  ].join(" ")}
-                >
-                  {balance.status === "receives" ? "+" : balance.status === "pays" ? "−" : ""}
-                  {formatMoney(Math.abs(balance.balance), currency)}
-                </span>
+              {detail?.composition && (
+                <p className="mt-0.5 text-xs font-bold text-ink-soft">{detail.composition}</p>
+              )}
+              {items.length > 0 && <ContributionLines items={items} currency={currency} />}
+              <p className={`font-mono text-xs text-muted ${items.length > 0 ? "mt-1.5" : "mt-0.5"}`}>
+                {balance.isEligibleToPay
+                  ? `puso ${formatMoney(balance.paidAmount, currency)} · le tocaba ${formatMoney(balance.expectedShare, currency)}`
+                  : "sin adultos: no aporta ni entra en el reparto"}
+              </p>
+              {detail?.shareFormula && (
+                <p className="font-mono text-xs text-muted" data-testid="ticket-share-formula">
+                  = {detail.shareFormula}
+                </p>
               )}
             </li>
           );

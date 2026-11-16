@@ -1,7 +1,8 @@
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { ArrowRightIcon, FlameIcon, LockIcon, SparkIcon } from "@/components/ui/icons";
 import { SettlementTicket } from "@/components/results/SettlementTicket";
-import { buildContributionsById } from "@/lib/calculations/contributions";
+import { buildFamilyTicketDetails } from "@/lib/flow/ticketDetails";
+import { formatMoney } from "@/lib/formatting/formatCurrency";
 import { DEMO_EVENT_NAME, DEMO_FAMILIES } from "@/lib/flow/demoEvent";
 import { deriveSettlement } from "@/lib/flow/eventInsights";
 
@@ -80,7 +81,7 @@ export function Hero() {
               eventName={DEMO_EVENT_NAME}
               currency="ARS"
               settlement={sample}
-              contributions={buildContributionsById(DEMO_FAMILIES)}
+              details={buildFamilyTicketDetails(DEMO_FAMILIES, null, formatMoney)}
               variant="preview"
               dateLabel="sáb · 21:47 · 5 familias"
               headingLevel="h2"
@@ -92,7 +93,7 @@ export function Hero() {
             className="animate-wiggle absolute -left-3 -top-16 grid h-22 w-22 place-items-center rounded-full border-2 border-ink bg-mustard p-2 text-center text-[13px] font-extrabold leading-tight shadow-hard-sm lg:-left-24 lg:top-1/3"
             style={{ "--tilt": "-10deg" } as React.CSSProperties}
           >
-            Los menores no pagan
+            Menores al 100, 50 o 0%
           </p>
           <p
             aria-hidden="true"

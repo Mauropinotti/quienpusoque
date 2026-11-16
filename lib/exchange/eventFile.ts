@@ -14,7 +14,9 @@ import {
 // el archivo lo guarda y lo elige el usuario; la app no sube nada.
 
 export const EVENT_FILE_FORMAT: EventExportFile["format"] = "quien-puso-que/calculo";
-export const EVENT_FILE_VERSION: EventExportFile["version"] = 1;
+export const EVENT_FILE_VERSION: EventExportFile["version"] = 2;
+/** Versiones que se pueden importar. La 1 guardaba integrantes sin separar adultos y menores. */
+const READABLE_FILE_VERSIONS = new Set([1, 2]);
 export const EVENT_FILE_EXTENSION = "json";
 export const EVENT_FILE_MIME_TYPE = "application/json";
 export const EVENT_FILE_ACCEPT = ".json,application/json";
@@ -156,7 +158,7 @@ export function parseEventExportFile(text: string): EventImportResult {
   if (data.version > EVENT_FILE_VERSION) {
     return { ok: false, error: IMPORT_ERRORS.newerVersion };
   }
-  if (data.version !== EVENT_FILE_VERSION) {
+  if (!READABLE_FILE_VERSIONS.has(data.version)) {
     return { ok: false, error: IMPORT_ERRORS.damaged };
   }
 

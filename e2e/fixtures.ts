@@ -41,16 +41,24 @@ export async function fillContributions(form: Locator, items: ContributionInput[
   }
 }
 
+/** Lleva el contador de adultos o menores al número pedido con − / +. */
+export async function setPeople(form: Locator, kind: "adultos" | "menores", target: number) {
+  const group = form.getByRole("group", { name: kind === "adultos" ? "Adultos" : "Menores" });
+  const unit = kind === "adultos" ? "adulto" : "menor";
+  const current = Number(await group.locator("output").textContent());
+  const button = group.getByRole("button", { name: `${target > current ? "Sumar" : "Restar"} un ${unit}` });
+  for (let i = 0; i < Math.abs(target - current); i += 1) await button.click();
+  await expect(group.locator("output")).toHaveText(String(target));
+}
+
 export async function addFamily(
   page: Page,
-  family: { name: string; members: number; type?: "Adulto" | "Menor"; items?: ContributionInput[] }
+  family: { name: string; adults: number; minors?: number; items?: ContributionInput[] }
 ) {
   const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Agregar familia" }) });
   await form.getByLabel("Nombre", { exact: true }).fill(family.name);
-  await form
-    .getByRole("button", { name: family.members === 1 ? "1 integrante" : `${family.members} integrantes`, exact: true })
-    .click();
-  if (family.type) await form.getByRole("button", { name: family.type }).click();
+  await setPeople(form, "adultos", family.adults);
+  await setPeople(form, "menores", family.minors ?? 0);
   if (family.items) await fillContributions(form, family.items);
   await form.getByRole("button", { name: "Agregar familia" }).click();
 }

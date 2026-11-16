@@ -27,6 +27,7 @@ import { DEMO_FAMILIES } from "@/lib/flow/demoEvent";
 import { deriveSettlement } from "@/lib/flow/eventInsights";
 import { createEmptyFlowState, eventFlowReducer } from "@/lib/flow/eventFlow";
 import { generateWhatsappText } from "@/lib/text/generateWhatsappText";
+import { calculateShareBreakdown } from "@/lib/calculations/calculateShareBreakdown";
 import { buildEventTicketPdf } from "@/lib/pdf/generateEventTicketPdf";
 import {
   EVENT_FILE_FORMAT,
@@ -71,7 +72,7 @@ function snapshot(overrides: Partial<EventSnapshot> = {}): EventSnapshot {
 }
 
 function fileText(event: unknown, extra: Record<string, unknown> = {}): string {
-  return JSON.stringify({ format: EVENT_FILE_FORMAT, version: 1, exportedAt: NOW, event, ...extra });
+  return JSON.stringify({ format: EVENT_FILE_FORMAT, version: 2, exportedAt: NOW, event, ...extra });
 }
 
 describe("contributions", () => {
@@ -132,8 +133,8 @@ describe("familyForm: cosas que puso", () => {
       ok: true,
       family: {
         name: "Los Pérez",
-        members: 2,
-        singleMemberType: null,
+        adults: 2,
+        minors: 0,
         paidAmount: 12000.5,
         items: [
           { description: "Carne", amount: 10000 },
@@ -169,7 +170,7 @@ describe("familyForm: cosas que puso", () => {
   it("suma en vivo solo los montos que ya se pueden leer", () => {
     expect(getFormTotal(formWith([["Carne", "1000"], ["Hielo", ""], ["Pan", "250,5"]]))).toBe(1250.5);
     expect(
-      getFormTotal(formWith([["Globos", "999"]], { members: 1, singleMemberType: "minor" }))
+      getFormTotal(formWith([["Globos", "999"]], { adults: 0, minors: 1 }))
     ).toBe(0);
   });
 
@@ -216,7 +217,7 @@ describe("familyForm: cosas que puso", () => {
 });
 
 describe("storage: familias con desglose", () => {
-  const base = { id: "a", name: "Los Pérez", members: 2, singleMemberType: null };
+  const base = { id: "a", name: "Los Pérez", adults: 2, minors: 0 };
 
   it("valida cada cosa guardada", () => {
     expect(isValidFamily({ ...base, paidAmount: 10, items: [{ description: "Pan", amount: 10 }] })).toBe(true);
@@ -256,12 +257,12 @@ describe("storage: familias con desglose", () => {
   it("un menor solo queda en $0 y sin desglose", () => {
     const minor = normalizeFamily({
       ...base,
-      members: 1,
-      singleMemberType: "minor",
+      adults: 0,
+      minors: 1,
       paidAmount: 500,
       items: [{ description: "Globos", amount: 500 }],
     });
-    expect(minor).toEqual({ ...base, members: 1, singleMemberType: "minor", paidAmount: 0 });
+    expect(minor).toEqual({ ...base, adults: 0, minors: 1, paidAmount: 0 });
   });
 
   it("un borrador viejo con notas se recupera con el desglose", () => {
@@ -301,6 +302,7 @@ describe("salidas con el desglose", () => {
       currency: "ARS",
       splitMode: "by-family",
       families: DEMO_FAMILIES,
+      breakdown: settlement.breakdown,
       balances: settlement.balances,
       transfers: settlement.transfers,
     });
@@ -330,6 +332,7 @@ describe("salidas con el desglose", () => {
       currency: "ARS",
       splitMode: "by-family",
       families: [],
+      breakdown: calculateShareBreakdown([], 0, "by-family"),
       balances: [],
       transfers: [],
     });
@@ -346,6 +349,7 @@ describe("salidas con el desglose", () => {
       families: DEMO_FAMILIES,
       balances: settlement.balances,
       transfers: settlement.transfers,
+      breakdown: settlement.breakdown,
       recommendation: null,
     });
     const content = doc.output();
@@ -363,7 +367,7 @@ describe("exportar e importar el cálculo", () => {
     const result = parseEventExportFile(text);
 
     expect(result).toEqual({ ok: true, event: original });
-    expect(JSON.parse(text)).toMatchObject({ format: "quien-puso-que/calculo", version: 1, exportedAt: NOW });
+    expect(JSON.parse(text)).toMatchObject({ format: "quien-puso-que/calculo", version: 2, exportedAt: NOW });
   });
 
   it("arma el snapshot desde el estado del flujo", () => {
@@ -389,7 +393,7 @@ describe("exportar e importar el cálculo", () => {
       ok: false,
       error: IMPORT_ERRORS.notAnEventFile,
     });
-    expect(parseEventExportFile(fileText(snapshot(), { version: 2 }))).toEqual({
+    expect(parseEventExportFile(fileText(snapshot(), { version: 3 }))).toEqual({
       ok: false,
       error: IMPORT_ERRORS.newerVersion,
     });
@@ -400,7 +404,7 @@ describe("exportar e importar el cálculo", () => {
       snapshot({ currency: "PESOS" }),
       snapshot({ createdAt: "ayer" }),
       { ...snapshot(), selectedMode: "a-ojo" },
-      { ...snapshot(), families: [{ id: "x", name: "", members: 2, singleMemberType: null, paidAmount: 0 }] },
+      { ...snapshot(), families: [{ id: "x", name: "", adults: 2, minors: 0, paidAmount: 0 }] },
       snapshot({ families: [DEMO_FAMILIES[0], DEMO_FAMILIES[0]] }),
       { ...snapshot(), families: "muchas" },
     ];
@@ -415,9 +419,9 @@ describe("exportar e importar el cálculo", () => {
       fileText(
         snapshot({
           families: [
-            { id: "a", name: "Los Pérez", members: 2, singleMemberType: null, paidAmount: 1, items: [{ description: "Pan", amount: 700 }, { description: "Hielo", amount: 300 }] },
-            { id: "b", name: "Juli", members: 1, singleMemberType: "minor", paidAmount: 900 },
-            { id: "c", name: "Los Gómez", members: 3, singleMemberType: null, paidAmount: 2000, notes: "Vino" } as Family,
+            { id: "a", name: "Los Pérez", adults: 2, minors: 0, paidAmount: 1, items: [{ description: "Pan", amount: 700 }, { description: "Hielo", amount: 300 }] },
+            { id: "b", name: "Juli", adults: 0, minors: 1, paidAmount: 900 },
+            { id: "c", name: "Los Gómez", adults: 3, minors: 0, paidAmount: 2000, notes: "Vino" } as Family,
           ],
         })
       )

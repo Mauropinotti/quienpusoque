@@ -30,8 +30,8 @@ function family(overrides: Partial<Family>): Family {
   return {
     id: overrides.id ?? "family-id",
     name: overrides.name ?? "Familia",
-    members: overrides.members ?? 2,
-    singleMemberType: overrides.singleMemberType ?? null,
+    adults: overrides.adults ?? 2,
+    minors: overrides.minors ?? 0,
     paidAmount: overrides.paidAmount ?? 0,
     ...(overrides.items ? { items: overrides.items } : {}),
   };
@@ -244,8 +244,8 @@ describe("deriveEventInsights", () => {
 
   it("no permite calcular con una sola familia habilitada", () => {
     const insights = deriveEventInsights([
-      family({ id: "a", members: 3, paidAmount: 100 }),
-      family({ id: "b", members: 1, singleMemberType: "minor" }),
+      family({ id: "a", adults: 3, paidAmount: 100 }),
+      family({ id: "b", adults: 0, minors: 1 }),
     ]);
 
     expect(insights.canCalculate).toBe(false);
@@ -436,34 +436,55 @@ describe("buildClosedEvent", () => {
 });
 
 describe("parseFamilyForm", () => {
-  it("valida nombre, tipo de integrante y cada cosa cargada", async () => {
+  it("valida nombre y cada cosa cargada", async () => {
     const { emptyFamilyFormValues, parseFamilyForm } = await import("@/lib/forms/familyForm");
 
     const values = emptyFamilyFormValues();
     const result = parseFamilyForm({
       ...values,
-      members: 1,
+      adults: 1,
       items: [{ ...values.items[0], description: "Hielo", amount: "" }],
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(Object.keys(result.errors).sort()).toEqual(["items", "name", "singleMemberType"]);
+      expect(Object.keys(result.errors).sort()).toEqual(["items", "name"]);
       expect(result.errors.items?.[values.items[0].key]).toMatch(/Cuánto salió/);
     }
   });
 
-  it("bloquea el monto de un menor solo en 0 y acepta coma decimal", async () => {
+  it("pide al menos una persona y cuenta adultos y menores dentro del tope", async () => {
+    const { changePeople, emptyFamilyFormValues, parseFamilyForm } = await import("@/lib/forms/familyForm");
+    const { MAX_PEOPLE_PER_KIND } = await import("@/lib/calculations/eligibility");
+
+    const empty = { ...emptyFamilyFormValues(), name: "Nadie", adults: 0, minors: 0 };
+    const result = parseFamilyForm(empty);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.people).toBe("Sumá al menos un adulto o un menor.");
+
+    let values = emptyFamilyFormValues();
+    values = changePeople(values, "adults", -1);
+    values = changePeople(values, "minors", 1);
+    values = changePeople(values, "minors", 1);
+    expect([values.adults, values.minors]).toEqual([1, 2]);
+    expect(changePeople({ ...values, minors: 0 }, "minors", -1).minors).toBe(0);
+    expect(changePeople({ ...values, adults: MAX_PEOPLE_PER_KIND }, "adults", 1).adults).toBe(MAX_PEOPLE_PER_KIND);
+
+    const family = parseFamilyForm({ ...values, name: "Los Pérez" });
+    expect(family.ok && family.family).toMatchObject({ adults: 1, minors: 2, paidAmount: 0 });
+  });
+
+  it("bloquea el monto de una familia sin adultos en 0 y acepta coma decimal", async () => {
     const { parseFamilyForm, parseAmount } = await import("@/lib/forms/familyForm");
 
     const minor = parseFamilyForm({
       name: " Juli ",
-      members: 1,
-      singleMemberType: "minor",
+      adults: 0,
+      minors: 1,
       items: [{ key: "1", description: "Globos", amount: "999" }],
     });
     expect(minor).toEqual({
       ok: true,
-      family: { name: "Juli", members: 1, singleMemberType: "minor", paidAmount: 0, items: undefined },
+      family: { name: "Juli", adults: 0, minors: 1, paidAmount: 0, items: undefined },
     });
     expect(parseAmount("2500,5")).toBe(2500.5);
     expect(parseAmount("-1")).toBeNull();

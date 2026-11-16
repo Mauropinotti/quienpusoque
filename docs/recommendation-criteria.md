@@ -14,7 +14,7 @@ Devuelve:
 
 ```ts
 {
-  recommendedMode: "by-family" | "by-person";
+  recommendedMode: "by-family" | "by-person"; // la base: cuánto pagan los menores lo elige el grupo
   confidence: "low" | "medium" | "high";
   reasons: string[];
   metrics: RecommendationMetrics;
@@ -36,10 +36,10 @@ El motor usa señales ponderadas:
 | Métrica | Descripción |
 |---|---|
 | `eligibleFamilies` | familias habilitadas para pagar |
-| `eligiblePersons` | personas habilitadas |
-| `singleAdultFamilyRatio` | proporción de familias de 1 adulto |
-| `largeFamilyRatio` | proporción de familias de 3 a 5 integrantes |
-| `averageFamilySize` | promedio de integrantes elegibles |
+| `eligiblePersons` | adultos + menores de las familias que aportan |
+| `singleAdultFamilyRatio` | proporción de familias de 1 adulto sin menores |
+| `largeFamilyRatio` | proporción de familias de 3 o más personas |
+| `averageFamilySize` | promedio de personas por familia que aporta |
 | `averageImpactBetweenModes` | impacto promedio entre criterios sobre el total |
 | `maxImpactBetweenModes` | impacto máximo individual entre criterios sobre el total |
 
@@ -152,7 +152,7 @@ Resultado: `by-person`, confianza alta.
 
 ### by-family con confianza alta
 
-Grupo: cinco familias de 3 a 5 integrantes y tamaños parecidos.
+Grupo: cinco familias de 3 a 5 personas y tamaños parecidos.
 
 - muchas familias numerosas
 - impacto bajo
@@ -174,3 +174,11 @@ Resultado: `by-family`, confianza baja por simpleza.
 - Los textos de `reasons` se muestran en UI; deben ser claros y cortos.
 - Si cambia un umbral, actualizar README y ejemplos.
 - Si cambia una señal, actualizar este documento y revisar casos de borde.
+
+## Menores
+
+La recomendación compara **por familia** contra **por persona con todos
+iguales** (`by-person`). No sugiere cuánto pagan los menores: esa es una
+decisión del grupo y se elige en el mismo paso (100%, 50% o 0%). Aceptar la
+sugerencia significa coincidir en la base: elegir "por persona, menores al
+50%" cuando se sugirió por persona cuenta como aceptada.

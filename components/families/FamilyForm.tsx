@@ -6,9 +6,10 @@ import { MAX_CONTRIBUTION_ITEMS } from "@/lib/calculations/contributions";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
 import {
   CONTRIBUTION_DESCRIPTION_MAX_LENGTH,
-  MEMBER_OPTIONS,
   addContributionRow,
   canAddContributionRow,
+  canChangePeople,
+  changePeople,
   emptyFamilyFormValues,
   familyToFormValues,
   getFormTotal,
@@ -22,7 +23,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PlusIcon, TrashIcon } from "@/components/ui/icons";
-import { SingleMemberTypeSelector } from "./SingleMemberTypeSelector";
+import { PeopleCounter } from "./PeopleCounter";
 
 interface FamilyFormProps {
   initialFamily?: Family;
@@ -114,56 +115,36 @@ export const FamilyForm = memo(function FamilyForm({
         />
 
         <fieldset>
-          <legend className="mb-2 text-sm font-bold">Integrantes</legend>
-          <div className="grid grid-cols-5 gap-2">
-            {MEMBER_OPTIONS.map((number) => {
-              const isSelected = values.members === number;
-              return (
-                <button
-                  key={number}
-                  type="button"
-                  aria-pressed={isSelected}
-                  aria-label={number === 1 ? "1 integrante" : `${number} integrantes`}
-                  onClick={() =>
-                    setValues((current) => ({
-                      ...current,
-                      members: number,
-                      singleMemberType: number === 1 ? current.singleMemberType : null,
-                    }))
-                  }
-                  className={[
-                    "flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border-2 border-ink font-mono text-lg font-black transition-all",
-                    isSelected
-                      ? "bg-ink text-paper shadow-[3px_3px_0_0_var(--color-ember)]"
-                      : "bg-white hover:bg-paper",
-                  ].join(" ")}
-                >
-                  {number}
-                  <span aria-hidden="true" className="flex gap-0.5">
-                    {Array.from({ length: number }, (_, i) => (
-                      <span
-                        key={i}
-                        className={`h-1.5 w-1.5 rounded-full ${isSelected ? "bg-ember" : "bg-ink/40"}`}
-                      />
-                    ))}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-
-        {values.members === 1 && (
-          <div>
-            <SingleMemberTypeSelector
-              value={values.singleMemberType}
-              onChange={(type) => update("singleMemberType", type)}
+          <legend className="mb-2 text-sm font-bold">¿Quiénes vienen?</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <PeopleCounter
+              label="Adultos"
+              hint="Siempre entran en el reparto."
+              unit="adulto"
+              tone="adult"
+              value={values.adults}
+              canDecrease={canChangePeople(values, "adults", -1)}
+              canIncrease={canChangePeople(values, "adults", 1)}
+              onChange={(delta) => setValues((current) => changePeople(current, "adults", delta))}
             />
-            {errors.singleMemberType && (
-              <p className="mt-2 text-sm font-bold text-morron">{errors.singleMemberType}</p>
-            )}
+            <PeopleCounter
+              label="Menores"
+              hint="Cuánto pagan se elige al repartir."
+              unit="menor"
+              tone="minor"
+              value={values.minors}
+              canDecrease={canChangePeople(values, "minors", -1)}
+              canIncrease={canChangePeople(values, "minors", 1)}
+              onChange={(delta) => setValues((current) => changePeople(current, "minors", delta))}
+            />
           </div>
-        )}
+          {errors.people && <p className="mt-2 text-sm font-bold text-morron">{errors.people}</p>}
+          {amountLocked && values.minors > 0 && (
+            <p className="mt-2 rounded-xl bg-mustard-soft px-3 py-2 text-sm text-mustard-text">
+              Sin adultos, esta familia no aporta: no paga ni cobra, y sus menores no entran en el reparto.
+            </p>
+          )}
+        </fieldset>
 
         {amountLocked ? (
           <Input
@@ -172,7 +153,7 @@ export const FamilyForm = memo(function FamilyForm({
             prefix="$"
             value="0"
             disabled
-            hint="Un menor solo no aporta, así que el monto queda en $0."
+            hint="Sin adultos no aporta, así que el monto queda en $0."
           />
         ) : (
           <fieldset>

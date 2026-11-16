@@ -6,7 +6,13 @@ import {
   removeStorageKey,
   writeStorageString,
 } from "./browserStorage";
-import { isRecord, isSplitMode, isValidFamily, normalizeFamily } from "./validators";
+import {
+  isRecord,
+  isSplitMode,
+  isValidFamily,
+  normalizeFamily,
+  type StoredFamily,
+} from "./validators";
 
 export const CURRENT_DRAFT_STORAGE_KEY = "quien-puso-que:current-draft";
 
@@ -73,9 +79,10 @@ function parseDraft(value: unknown): LocalEventDraft | null {
     eventName,
     currency,
     createdAt: typeof createdAt === "string" ? createdAt : updatedAt,
-    // Borradores viejos pueden traer monto en un menor solo o la nota libre
-    // previa al desglose: normalizeFamily los pone al día.
-    families: (families as Family[]).map(normalizeFamily),
+    // Borradores viejos pueden traer integrantes sin distinguir adultos de
+    // menores, monto en una familia sin adultos o la nota libre previa al
+    // desglose: normalizeFamily los pone al día.
+    families: (families as StoredFamily[]).map(normalizeFamily),
     selectedMode,
     splitMode,
     recommendationAccepted,

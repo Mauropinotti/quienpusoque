@@ -181,6 +181,23 @@ mismo instrumental:
   ticket se indexa una vez con `useMemo` sobre `families`.
 - jsPDF sigue fuera de la carga inicial.
 
+### Adultos y menores + menores al 100/50/0%
+
+Mismo instrumental, contra la versión anterior de esta rama:
+
+| Ruta | JS inicial | JS después del load |
+|---|---:|---:|
+| `/calcular` antes | 167,8 KB | 23,3 KB |
+| **`/calcular` ahora** | **168,0 KB** (+0,2 KB) | 25,4 KB (+2,1 KB) |
+| landing `/` | 159,3 KB (sin cambios, 0 KB propios) | 12,8 KB |
+
+- Los contadores de adultos/menores reemplazan los botones de integrantes: el
+  paso 2 casi no cambia de peso.
+- El desglose del reparto y sus textos (`calculateShareBreakdown`,
+  `describeSplit`) viajan en los chunks diferidos de recomendación y
+  resultados. Las vistas previas de cada respuesta sobre menores se calculan
+  una vez por lista de familias (`useMemo`).
+
 ## Experimentos descartados
 
 | Experimento | Resultado | Decisión |

@@ -39,7 +39,8 @@ export interface EventSnapshot {
 /** Archivo `.json` que baja "Exportar cálculo" y lee "Importar cálculo". */
 export interface EventExportFile {
   format: "quien-puso-que/calculo";
-  version: 1;
+  /** 2: familias con adultos y menores. 1: con integrantes (se sigue leyendo). */
+  version: 2;
   exportedAt: string;
   event: EventSnapshot;
 }

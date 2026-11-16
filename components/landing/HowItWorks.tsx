@@ -116,8 +116,8 @@ export function HowItWorks() {
           visual={<FamilyChipsVisual />}
           tilt="lg:-rotate-1"
         >
-          Familias, parejas o sueltos: cuántos son y cuánto puso cada uno. Un
-          menor que viene solo no aporta, y la app ya lo sabe.
+          Familias, parejas o sueltos: cuántos adultos, cuántos menores y qué
+          puso cada uno. La app suma todo por vos.
         </StepCard>
         <StepCard
           number="02"
@@ -126,8 +126,8 @@ export function HowItWorks() {
           className="bg-sky-soft"
           tilt="lg:translate-y-6"
         >
-          ¿Por familia o por persona? Miramos tamaños y diferencias de plata,
-          te recomendamos uno y te explicamos por qué. La última palabra es tuya.
+          ¿Por familia o por persona? ¿Los menores pagan todo, la mitad o nada?
+          Te recomendamos y te explicamos la cuenta. La última palabra es tuya.
         </StepCard>
         <StepCard
           number="03"

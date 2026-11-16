@@ -12,9 +12,11 @@ import {
 } from "./browserStorage";
 import {
   isRecord,
+  isSplitBasis,
   isSplitMode,
   isValidDate,
   isValidFamily,
+  normalizeFamily,
 } from "./validators";
 
 export const CLOSED_EVENTS_STORAGE_KEY = "quien-puso-que:closed-events";
@@ -118,7 +120,7 @@ function isValidRecommendation(value: unknown): value is SplitRecommendation {
   const { recommendedMode, confidence, reasons, metrics } = value;
 
   return (
-    isSplitMode(recommendedMode) &&
+    isSplitBasis(recommendedMode) &&
     isConfidence(confidence) &&
     Array.isArray(reasons) &&
     reasons.every((reason) => typeof reason === "string") &&
@@ -174,7 +176,11 @@ function parsePayload(value: unknown): ClosedEvent[] {
   if (version !== STORAGE_VERSION) return [];
   if (!Array.isArray(events)) return [];
 
-  return events.filter(isValidClosedEvent);
+  // Las familias de versiones anteriores se pasan al formato actual.
+  return events.filter(isValidClosedEvent).map((event) => ({
+    ...event,
+    familiesSnapshot: event.familiesSnapshot.map(normalizeFamily),
+  }));
 }
 
 function sortByClosedAt(events: ClosedEvent[]): ClosedEvent[] {

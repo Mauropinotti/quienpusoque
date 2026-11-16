@@ -1,11 +1,20 @@
 import { memo } from "react";
 import type { SplitMode } from "@/types/family";
 import type { ModeComparisonRow } from "@/lib/flow/eventInsights";
+import { getSplitBasis, type PersonSplitMode } from "@/lib/calculations/splitModes";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
+
+const PERSON_COLUMN_NOTE: Record<PersonSplitMode, string | null> = {
+  "by-person": null,
+  "by-person-minors-half": "menores 50%",
+  "by-person-minors-zero": "menores 0%",
+};
 
 interface ModeComparisonProps {
   rows: ModeComparisonRow[];
   selectedMode: SplitMode;
+  /** Regla de menores con la que se calcula la columna "por persona". */
+  personMode: PersonSplitMode;
   currency: string;
 }
 
@@ -13,10 +22,13 @@ interface ModeComparisonProps {
 export const ModeComparison = memo(function ModeComparison({
   rows,
   selectedMode,
+  personMode,
   currency,
 }: ModeComparisonProps) {
-  const highlight = (mode: SplitMode) =>
-    mode === selectedMode ? "bg-ember-soft font-black text-ink" : "text-ink-soft";
+  const selectedBasis = getSplitBasis(selectedMode);
+  const highlight = (basis: "by-family" | "by-person") =>
+    basis === selectedBasis ? "bg-ember-soft font-black text-ink" : "text-ink-soft";
+  const personNote = PERSON_COLUMN_NOTE[personMode];
 
   return (
     <section aria-labelledby="mode-comparison-title" className="paper-card overflow-hidden">
@@ -38,6 +50,9 @@ export const ModeComparison = memo(function ModeComparison({
               </th>
               <th scope="col" className={`px-5 py-2 text-right ${highlight("by-person")}`}>
                 Por persona
+                {personNote && (
+                  <span className="block text-[10px] normal-case tracking-normal">{personNote}</span>
+                )}
               </th>
             </tr>
           </thead>
