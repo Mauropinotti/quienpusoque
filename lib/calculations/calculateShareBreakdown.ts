@@ -9,22 +9,23 @@ function round2(value: number): number {
 }
 
 /**
- * Parte de cada uno según cuánto pagan los menores. Siempre por persona.
+ * Reparto por porciones. Cada adulto cuenta una porción; cada menor, la
+ * fracción elegida: 1 (100%), ½ (50%) o 0 (0%).
  *
- * - Menores al 100%: parte = total ÷ (adultos + menores); todos pagan igual.
- * - Menores al 50%:  parte = total ÷ (adultos + menores); cada menor paga la
- *                    mitad. La otra mitad de un menor de una familia con
- *                    adultos la cubren los adultos de SU familia; la de un
- *                    menor que vino solo (y paga su parte) se reparte en
- *                    partes iguales entre TODOS los adultos.
- * - Menores al 0%:   total ÷ adultos; los menores no pagan.
+ *   porciones          = adultos + menores × fracción
+ *   precio por porción = total ÷ porciones   → lo que paga cada adulto
+ *   cada menor paga    = precio × fracción   → al 50%, la mitad que un adulto
+ *
+ * Con 100% da lo mismo que repartir en partes iguales por persona y con 0%
+ * lo mismo que dividir el total entre los adultos. Nadie absorbe "lo que no
+ * paga" otro: todos pagan el mismo precio por porción.
  *
  * Solo cuentan las familias que entran en la cuenta (`isEligibleToPay`): las
  * que tienen adultos y los menores solos que pagan su parte.
  *
- * Cada paso se redondea a centavos sobre los montos ya redondeados: lo que se
- * muestra en el ticket cierra a la vista. La diferencia de centavos contra el
- * total la absorben las transferencias (ver `calculateTransfers`).
+ * Cada paso se redondea a centavos: lo que se muestra en el ticket cierra a
+ * la vista. La diferencia de centavos contra el total la absorben las
+ * transferencias (ver `calculateTransfers`).
  */
 export function calculateShareBreakdown(
   families: FamilyWithEligibility[],
@@ -37,6 +38,8 @@ export function calculateShareBreakdown(
   const soloMinors = contributing
     .filter(isSoloMinorFamily)
     .reduce((sum, family) => sum + family.minors, 0);
+  const minorRatio = MINOR_SHARE_RATIO[splitMode];
+  const portions = adults + minors * minorRatio;
 
   const breakdown: SplitBreakdown = {
     splitMode,
@@ -45,70 +48,24 @@ export function calculateShareBreakdown(
     adults,
     minors,
     soloMinors,
-    personShare: 0,
-    minorRatio: MINOR_SHARE_RATIO[splitMode],
-    minorShare: 0,
-    minorCover: 0,
-    soloMinorsUnpaid: 0,
-    adultSurcharge: 0,
+    minorRatio,
+    portions,
     adultShare: 0,
+    minorShare: 0,
   };
 
-  // Sin adultos no hay quién cubra nada: no se reparte.
+  // Sin adultos no se reparte: alguien tiene que hacerse cargo de los menores.
   if (contributing.length === 0 || adults === 0) return breakdown;
 
-  if (splitMode === "by-person-minors-zero") {
-    // "El total se divide entre todos los adultos": sin pasos intermedios.
-    return { ...breakdown, adultShare: round2(totalAmount / adults) };
-  }
-
-  const personShare = round2(totalAmount / (adults + minors));
-  const minorShare = round2(personShare * breakdown.minorRatio);
-  const minorCover = round2(personShare - minorShare);
-  const soloMinorsUnpaid = round2(soloMinors * minorCover);
-  const adultSurcharge = round2(soloMinorsUnpaid / adults);
-
-  return {
-    ...breakdown,
-    personShare,
-    minorShare,
-    minorCover,
-    soloMinorsUnpaid,
-    adultSurcharge,
-    adultShare: round2(personShare + adultSurcharge),
-  };
+  const adultShare = round2(totalAmount / portions);
+  return { ...breakdown, adultShare, minorShare: round2(adultShare * minorRatio) };
 }
 
-/** Partes de la cuota de una familia, para mostrar la cuenta. */
-export interface FamilyShareParts {
-  /** Adultos × lo que paga cada adulto. */
-  adults: number;
-  /** Menores × lo que paga cada menor. */
-  minors: number;
-  /** Lo que los adultos de la familia cubren de sus propios menores (50%). */
-  ownMinorsCover: number;
-  total: number;
-}
-
-export function getFamilyShareParts(
-  family: FamilyWithEligibility,
-  breakdown: SplitBreakdown
-): FamilyShareParts {
-  if (!family.isEligibleToPay) return { adults: 0, minors: 0, ownMinorsCover: 0, total: 0 };
-
-  const adults = round2(family.adults * breakdown.adultShare);
-  const minors = round2(family.minors * breakdown.minorShare);
-  // Los menores solos no tienen adultos propios: su parte faltante ya está
-  // repartida entre todos (adultSurcharge).
-  const ownMinorsCover = isSoloMinorFamily(family) ? 0 : round2(family.minors * breakdown.minorCover);
-
-  return { adults, minors, ownMinorsCover, total: round2(adults + minors + ownMinorsCover) };
-}
-
-/** Lo que le toca a una familia con ese desglose. */
+/** Lo que le toca a una familia: sus porciones al precio de la porción. */
 export function getFamilyShare(
   family: FamilyWithEligibility,
   breakdown: SplitBreakdown
 ): number {
-  return getFamilyShareParts(family, breakdown).total;
+  if (!family.isEligibleToPay) return 0;
+  return round2(family.adults * breakdown.adultShare + family.minors * breakdown.minorShare);
 }

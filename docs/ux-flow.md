@@ -31,9 +31,9 @@ Objetivo: explicar en segundos qué hace la app y llevar al cálculo.
 - Link secundario **Ver un asado de ejemplo** → `/calcular?demo=1`.
 - Ticket de muestra calculado en build con el motor real (no es una imagen).
 - Cinta animada, "Tres pasos y a la sobremesa" y bloque de privacidad.
-- **Progreso** (`#versiones`): la versión actual ("Quienpusoque V1.2") con sus
+- **Progreso** (`#versiones`): la versión actual ("Quienpusoque V1.3") con sus
   novedades y el historial de versiones. Se llega desde el aviso "Nuevo ·
-  Quienpusoque V1.2" del inicio, el menú (`Novedades`) y el pie, que muestra
+  Quienpusoque V1.3" del inicio, el menú (`Novedades`) y el pie, que muestra
   la versión en todas las páginas. Los datos salen de `lib/releases.ts`.
 
 ## Arranque de la calculadora
@@ -72,13 +72,15 @@ Formulario `Sumá una familia`:
 - nombre
 - **¿Quiénes vienen?**: dos contadores − / + para `Adultos` y `Menores`
   (0 a 20 cada uno, al menos una persona). Por defecto, 2 adultos.
-- sin adultos: aviso de que la familia no aporta y sus menores no entran
+- sin adultos (menores que vinieron solos): casilla **Va a pagar su parte**.
+  Marcada, entran en la cuenta y su parte la paga su padre, madre o tutor; sin
+  marcar, quedan invitados
 - **¿Qué puso?**: una fila por cosa, con `Qué puso` y `Cuánto salió` (prefijo
   `$`, acepta coma o punto decimal). `Sumar otra cosa` agrega una fila (hasta
   12) y lleva el foco a ella; el tacho la quita.
 - `Total que puso` se calcula en vivo con la suma de las filas: el usuario no
   lo tipea.
-- sin adultos: en lugar de las filas, `Monto pagado` bloqueado en $0.
+- menores solos invitados: en lugar de las filas, `Monto pagado` bloqueado en $0.
 - en el celular cada fila ocupa dos renglones (qué / cuánto); desde `sm`, uno
 - los errores aparecen al intentar agregar, no mientras se tipea; una cosa sin
   monto se marca en su propia fila
@@ -90,42 +92,41 @@ Lista `En la mesa`:
 - tarjeta por familia con avatar, "2 adultos y 1 menor" (puntos llenos y
   puntos mostaza), total y, debajo, cada cosa con su monto
 - `Exportar cálculo` junto al título (si hay al menos una familia)
-- badge `No aporta` para familias sin adultos
+- badge `No aporta` para menores solos invitados y `Paga su tutor` para los
+  que pagan su parte
 - edición inline y eliminación con confirmación
 - avisos si no hay gasto o falta una familia que aporte
 
-Barra fija inferior con el total puesto y `Ver recomendación` (requiere al
-menos 2 familias y 2 habilitadas).
+Barra fija inferior con el total puesto y `Cómo repartir` (requiere al menos 2
+familias en la cuenta y algún adulto).
 
-## 3. Recommendation
+## 3. Criterion: ¿Cómo pagan los menores?
 
-Objetivo: explicar el criterio sugerido y permitir decisión manual.
+Objetivo: elegir cuánto cuenta cada menor. Desde V1.3 no hay sugerencia
+automática ni reparto "por familia": siempre se reparte por persona, por
+porciones (ver `docs/calculation-model.md`).
 
-- Tarjeta "Nuestra sugerencia" con el criterio, medidor de confianza y razones.
-- Selector `Por familia` / `Por persona` con radios nativos (flechas del
-  teclado y lectores de pantalla funcionan sin código extra).
-- Si se elige `Por persona` y hay menores en las familias que aportan, aparece
-  **¿Cómo pagan los menores?** con tres radios, cada uno con lo que pagaría un
-  adulto y un menor:
-  - `Igual que los adultos (100%)`: todos pagan una parte igual.
-  - `La mitad (50%)`: cada menor paga la mitad de la parte por persona; lo que
-    no pagan se reparte en partes iguales entre los adultos.
-  - `No pagan (0%)`: el total se divide solo entre los adultos.
-  Sin menores no se pregunta (las tres dan lo mismo). La respuesta se recuerda
-  aunque pasen un rato por `Por familia`.
-- Tabla **Así le toca a cada uno**: lo que pondría cada familia por familia y
-  por persona (con la regla de menores elegida, indicada en el encabezado),
-  resaltando el elegido.
-- Métricas del grupo: familias que aportan, adultos, menores y diferencia
-  entre criterios.
+- Encabezado `¿Cómo pagan los menores?` con una línea que explica las
+  porciones.
+- Conteo: familias en la cuenta, adultos, menores con su familia y menores
+  solos que pagan.
+- Radios nativos (flechas del teclado y lectores de pantalla sin código
+  extra), cada uno con lo que pagaría un adulto y un menor:
+  - `Igual que un adulto (100%)`: cada menor es una porción entera.
+  - `La mitad (50%)`: cada menor es media porción; paga la mitad que un adulto.
+  - `No pagan (0%)`: el total se divide entre los adultos.
+- Sin menores en la cuenta no se pregunta: todos pagan una parte igual.
+- **Menores que vinieron solos**: lista con su estado (paga su parte a
+  través de su tutor / invitado). Se cambia editando la familia.
+- Tabla **Así le toca a cada uno**: lo que pondría cada familia con 100%, 50%
+  y 0%, resaltando la opción elegida.
 - Botón fijo `Ver resultado`.
 
 Reglas:
 
-- al entrar al paso, la app selecciona el modo recomendado
-- si el usuario cambia el modo, se marca que la recomendación no quedó aceptada todavía
-- al confirmar, se guarda si la base elegida (por familia / por persona)
-  coincide con la recomendación; cuánto pagan los menores no cuenta
+- por defecto, 100%; la elección se recuerda al volver a familias y abrir el
+  paso otra vez
+- al confirmar, el criterio queda guardado en el borrador
 
 ## 4. Results
 
@@ -134,9 +135,12 @@ Objetivo: cerrar la cuenta.
 - Título `¡Cuenta cerrada!`.
 - El ticket: por familia, nombre, estado y balance; debajo, "2 adultos y 1
   menor", cada cosa que puso con su monto, "puso · le tocaba" y la cuenta
-  ("= 2 adultos × $1.750 + 1 menor × $750"). Después el total, el criterio con
+  ("= 1 adulto × $1.846,15 + 1 menor × $923,08"). Los menores solos que pagan
+  llevan la marca "Menor · paga su parte a través de su padre, madre o
+  tutor". Después el total, el criterio con
   la parte unitaria, **Cómo se repartió** (los pasos del cálculo) y **Quién le
-  pasa a quién** con las transferencias numeradas.
+  pasa a quién** con las transferencias numeradas. Si transfiere o cobra un
+  menor solo, aparece "Padre/madre o tutor encargado de {nombre}".
 - Bloque `Compartir y cerrar`:
   - `Copiar resumen para WhatsApp`
   - `Descargar ticket PDF`
@@ -157,7 +161,8 @@ Badges:
 El resumen incluye el criterio, **Cómo se calculó** (los mismos pasos del
 ticket), **Lo que puso cada uno** (cada familia con su total y cada cosa con
 su monto; una sola cosa va en la misma línea), **Le toca a cada familia** (la
-cuenta de cada una, en los criterios por persona) y las familias sin adultos.
+cuenta de cada una) y los menores solos invitados. Las transferencias de un
+menor solo dicen "Padre/madre o tutor encargado de {nombre} le transfiere…".
 
 El botón usa `navigator.clipboard` cuando está disponible.
 
@@ -192,24 +197,24 @@ Para seguir una cuenta otro día o en otro dispositivo, sin servidor.
   formato y versión, moneda, fechas, familias, ids únicos y desglose. Los
   totales se recalculan desde el desglose. Si algo no cierra, no se carga nada
   y se explica por qué.
-- La versión 2 guarda adultos y menores. Los archivos de la versión 1 (con
-  integrantes) se siguen importando: cada familia pasa a adultos y menores con
-  la misma regla que los borradores viejos (ver `docs/calculation-model.md`).
+- La versión 3 guarda solo criterios por persona y `paysOwnShare` en menores
+  solos. La 2 (adultos y menores) y la 1 (integrantes) se siguen importando:
+  "por familia" queda sin confirmar y la aceptación de la sugerencia se ignora
+  (ver `docs/calculation-model.md`).
 
 Formato:
 
 ```json
 {
   "format": "quien-puso-que/calculo",
-  "version": 2,
+  "version": 3,
   "exportedAt": "2026-11-16T15:00:00.000Z",
   "event": {
     "eventName": "Asado del sábado",
     "currency": "ARS",
     "createdAt": "2026-11-16T14:30:00.000Z",
     "splitMode": null,
-    "selectedMode": "by-family",
-    "recommendationAccepted": null,
+    "selectedMode": "by-person-minors-half",
     "families": [
       {
         "id": "demo-garcia",
@@ -242,7 +247,6 @@ Datos:
 - familias
 - modo seleccionado
 - modo confirmado
-- aceptación de recomendación
 - fecha de creación
 - fecha de última edición
 
@@ -271,7 +275,6 @@ Si el storage falla o trae datos inválidos, se ignora el borrador y la app arra
 
 - estado de la calculadora
 - selección de criterio
-- aceptación de recomendación
 - borrador de `localStorage`
 
 ## Evento borrador
@@ -321,7 +324,7 @@ La página `/ayuda` explica:
 - cómo exportar e importar un cálculo
 - adultos y menores, y cómo pagan los menores (100%, 50% o 0%)
 - quién paga y quién no paga
-- diferencia entre reparto por familia y por persona
+- reparto por porciones y menores solos que pagan su parte
 - balances, cobros, pagos y transferencias
 - salidas: pantalla, WhatsApp, PDF e historial local
 

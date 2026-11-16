@@ -3,9 +3,9 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import type { Family } from "@/types/family";
 import type { EventTicketPdfData, EventTicketPhoto } from "@/types/pdf";
-import type { SplitRecommendation } from "@/types/recommendation";
 import type { Settlement } from "@/lib/flow/eventInsights";
 import { buildFamilyTicketDetails } from "@/lib/flow/ticketDetails";
+import { getSoloMinorIds } from "@/lib/text/describeSplit";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
 import { formatMediumDateTime } from "@/lib/formatting/formatDate";
 import { generateWhatsappText } from "@/lib/text/generateWhatsappText";
@@ -22,7 +22,6 @@ interface ResultsStepProps {
   currency: string;
   families: Family[];
   settlement: Settlement;
-  recommendation: SplitRecommendation | null;
   ticketPhoto: EventTicketPhoto | null;
   isSavedToHistory: boolean;
   historySaveError: string;
@@ -44,7 +43,6 @@ export function ResultsStep({
   currency,
   families,
   settlement,
-  recommendation,
   ticketPhoto,
   isSavedToHistory,
   historySaveError,
@@ -56,6 +54,7 @@ export function ResultsStep({
 }: ResultsStepProps) {
   const [dateLabel] = useState(() => formatMediumDateTime(new Date()));
   const [isConfirmingReset, setIsConfirmingReset] = useState(false);
+  const soloMinorIds = useMemo(() => getSoloMinorIds(families), [families]);
   const details = useMemo(
     () =>
       buildFamilyTicketDetails(families, settlement.breakdown, (amount) =>
@@ -89,10 +88,9 @@ export function ResultsStep({
       balances: settlement.balances,
       transfers: settlement.transfers,
       breakdown: settlement.breakdown,
-      recommendation,
       photo: ticketPhoto,
     }),
-    [currency, eventName, families, recommendation, settlement, ticketPhoto]
+    [currency, eventName, families, settlement, ticketPhoto]
   );
 
   return (
@@ -119,6 +117,7 @@ export function ResultsStep({
           currency={currency}
           settlement={settlement}
           details={details}
+          soloMinorIds={soloMinorIds}
           variant="full"
           dateLabel={dateLabel}
         />

@@ -8,7 +8,6 @@ Crear un documento compartible e imprimible con el resumen completo del evento:
 
 - datos generales
 - criterio usado
-- recomendación de la app
 - cómo se calculó, paso a paso, y lo que le toca a cada familia
 - familias y balances, con el detalle de lo que puso cada una
 - familias no aportantes
@@ -79,15 +78,16 @@ lean completos antes que comprimirlos.
    - familias cargadas
    - familias que aportan
    - adultos + menores (de las familias que aportan)
+   - menores solos que pagan su parte
    - criterio usado (por ejemplo, "por persona, menores al 50%")
-   - base recomendada (por familia / por persona)
-6. Explicación breve del criterio y su regla.
+6. Explicación breve del criterio y su regla (sin sugerencia: el criterio
+   lo elige el grupo).
 6b. **Cómo se calculó**: una operación por renglón, con montos que ya
     aparecieron antes (sale de `describeSplitSteps`, el mismo texto del ticket
-    y del WhatsApp). Con menores al 50% muestra la parte igual, lo que paga
-    cada menor, lo que dejan de pagar, cuánto suma cada adulto y lo que paga.
-6c. **Le toca a cada familia** (criterios por persona): "Los Pérez: 2 adultos ×
-    $1.750,00 + 1 menor × $750,00 = $4.250,00".
+    y del WhatsApp). Con menores al 50% muestra las porciones, el precio por
+    porción (lo que paga cada adulto) y lo que paga cada menor.
+6c. **Le toca a cada familia**: "Ana: 1 adulto × $1.846,15 + 1 menor ×
+    $923,08 = $2.769,23".
 7. Tabla de familias:
    - nombre
    - adultos
@@ -99,8 +99,10 @@ lean completos antes que comprimirlos.
    - debajo de cada familia, cada cosa que puso ("· Carne") con su monto en
      la columna "Pagó", así la suma se puede chequear a ojo. Las
      descripciones largas siguen en el renglón de abajo con sangría.
-8. Familias no aportantes (sin adultos), con su composición.
-9. Transferencias sugeridas.
+8. Familias no aportantes (menores solos invitados), con su composición.
+9. Transferencias sugeridas. Si transfiere o cobra un menor solo, la línea
+   dice "Padre/madre o tutor encargado de {nombre} le transfiere…"; en la
+   tabla de familias y en "Le toca a cada familia" figura "(menor solo)".
 10. Nota de cierre, como pie discreto sin título, que termina con
     `¡Cuentas claras siempre!`
 11. Pie de página: `desarrollado por MauroHP - Lista 127 8B 2026.-`

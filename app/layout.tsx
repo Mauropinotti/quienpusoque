@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     template: "%s · ¿Quién puso qué?",
   },
   description:
-    "Cargás quién vino y cuánto puso: la app reparte por familia o por persona, arma las transferencias y te da el resumen para WhatsApp y un ticket PDF. Sin registro, todo en tu navegador.",
+    "Cargás quién vino y cuánto puso: la app reparte por persona (los menores pagan todo, la mitad o nada), arma las transferencias y te da el resumen para WhatsApp y un ticket PDF. Sin registro, todo en tu navegador.",
   applicationName: "¿Quién puso qué?",
   authors: [{ name: "MauroHP" }],
   keywords: [

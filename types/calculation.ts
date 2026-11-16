@@ -38,6 +38,9 @@ export interface FamilyBalance {
 /**
  * Cómo se llegó a la parte de cada uno, paso a paso. Lo calcula
  * `calculateShareBreakdown` y lo muestran el ticket, el WhatsApp y el PDF.
+ *
+ * Reparto por porciones: cada adulto cuenta una porción y cada menor la
+ * fracción elegida (1, ½ o 0). Precio de la porción = total ÷ porciones.
  * Cada monto es el resultado redondeado a centavos de una operación sobre los
  * montos anteriores, así las cuentas que se muestran cierran a la vista.
  */
@@ -52,20 +55,14 @@ export interface SplitBreakdown {
   minors: number;
   /** De esos menores, los que vinieron solos (paga su padre, madre o tutor). */
   soloMinors: number;
-  /** Total ÷ (adultos + menores). 0 cuando los menores no pagan. */
-  personShare: number;
-  /** Parte de la cuota que paga cada menor: 1, 0,5 o 0. */
+  /** Porción de cada menor: 1, 0,5 o 0. */
   minorRatio: number;
-  /** Lo que paga cada menor. */
-  minorShare: number;
-  /** Lo que le falta a cada menor para la parte igual (solo menores al 50%). */
-  minorCover: number;
-  /** Lo que no pagan los menores solos, que se reparte entre todos los adultos. */
-  soloMinorsUnpaid: number;
-  /** Lo que suma cada adulto por los menores solos. */
-  adultSurcharge: number;
-  /** Lo que paga cada adulto por sí mismo (sin contar a los menores de su familia). */
+  /** adultos + menores × minorRatio. */
+  portions: number;
+  /** Lo que paga cada adulto: total ÷ porciones. */
   adultShare: number;
+  /** Lo que paga cada menor: adultShare × minorRatio. */
+  minorShare: number;
 }
 
 export interface CalculationOutput {

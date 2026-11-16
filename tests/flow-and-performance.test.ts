@@ -99,14 +99,13 @@ describe("eventFlowReducer", () => {
     expect(eventFlowReducer(base, { type: "event-renamed", name: "" })).toBe(base);
     expect(eventFlowReducer(base, { type: "step-changed", step: "setup" })).toBe(base);
     expect(
-      eventFlowReducer(base, { type: "mode-selected", mode: "by-family" })
+      eventFlowReducer(base, { type: "mode-selected", mode: "by-person" })
     ).toBe(base);
   });
 
-  it("invalida recomendación aceptada, guardado y foto al tocar familias", () => {
+  it("invalida guardado y foto al tocar familias", () => {
     const dirty: EventFlowState = {
       ...withDemo(),
-      recommendationAccepted: true,
       savedClosedEventId: "closed-1",
       historySaveError: "error",
       ticketPhoto: { dataUrl: "data:", name: "a.jpg", type: "image/jpeg", size: 1 },
@@ -118,28 +117,24 @@ describe("eventFlowReducer", () => {
     });
 
     expect(state.eventData.families).toHaveLength(6);
-    expect(state.recommendationAccepted).toBeNull();
     expect(state.savedClosedEventId).toBeNull();
     expect(state.historySaveError).toBe("");
     expect(state.ticketPhoto).toBeNull();
   });
 
-  it("confirma el criterio y registra si coincide con la recomendación", () => {
-    let state = eventFlowReducer(withDemo(), {
-      type: "recommendation-opened",
-      recommendedMode: "by-person",
-    });
+  it("abre el criterio, respeta lo elegido sobre menores y lo confirma", () => {
+    let state = eventFlowReducer(withDemo(), { type: "criterion-opened" });
+    expect(state.step).toBe("criterion");
     expect(state.selectedMode).toBe("by-person");
 
-    state = eventFlowReducer(state, { type: "mode-selected", mode: "by-family" });
-    state = eventFlowReducer(state, {
-      type: "mode-confirmed",
-      recommendedMode: "by-person",
-    });
+    state = eventFlowReducer(state, { type: "mode-selected", mode: "by-person-minors-half" });
+    state = eventFlowReducer(state, { type: "step-changed", step: "families" });
+    state = eventFlowReducer(state, { type: "criterion-opened" });
+    expect(state.selectedMode).toBe("by-person-minors-half");
 
+    state = eventFlowReducer(state, { type: "mode-confirmed" });
     expect(state.step).toBe("results");
-    expect(state.eventData.splitMode).toBe("by-family");
-    expect(state.recommendationAccepted).toBe(false);
+    expect(state.eventData.splitMode).toBe("by-person-minors-half");
   });
 
   it("edita y elimina familias por id", () => {
@@ -168,14 +163,13 @@ describe("eventFlowReducer", () => {
       currency: "ARS",
       createdAt: NOW,
       families: DEMO_FAMILIES,
-      selectedMode: "by-family" as const,
+      selectedMode: "by-person" as const,
       splitMode: null,
-      recommendationAccepted: null,
       updatedAt: NOW,
     };
 
     expect(getStepFromDraft(draft)).toBe("families");
-    expect(getStepFromDraft({ ...draft, splitMode: "by-family" })).toBe("results");
+    expect(getStepFromDraft({ ...draft, splitMode: "by-person-minors-half" })).toBe("results");
     expect(getStepFromDraft({ ...draft, families: [] })).toBe("setup");
   });
 });
@@ -208,7 +202,6 @@ describe("bootstrapFlow", () => {
         families: DEMO_FAMILIES,
       },
       selectedMode: "by-person" as const,
-      recommendationAccepted: true,
       createdAt: NOW,
     };
     saveCurrentEventDraft(input);
@@ -239,7 +232,7 @@ describe("deriveEventInsights", () => {
     expect(insights.eligibleFamilyCount).toBe(4);
     expect(insights.totalPaid).toBe(16000);
     expect(insights.canCalculate).toBe(true);
-    expect(insights.recommendation).not.toBeNull();
+    expect(insights).toMatchObject({ adultCount: 7, familyMinorCount: 3, soloMinorCount: 0, guestMinorCount: 1 });
   });
 
   it("no permite calcular con una sola familia habilitada", () => {
@@ -254,7 +247,7 @@ describe("deriveEventInsights", () => {
 
 describe("deriveSettlement", () => {
   it("calcula balances y transferencias del criterio confirmado", () => {
-    const settlement = deriveSettlement(DEMO_FAMILIES, "ARS", "by-family");
+    const settlement = deriveSettlement(DEMO_FAMILIES, "ARS", "by-person");
 
     expect(settlement?.totalAmount).toBe(16000);
     expect(settlement?.transfers).toHaveLength(2);
@@ -281,7 +274,7 @@ describe("browserStorage", () => {
 
 describe("closed events store", () => {
   function closedEvent(id: string): ClosedEvent {
-    const settlement = deriveSettlement(DEMO_FAMILIES, "ARS", "by-family");
+    const settlement = deriveSettlement(DEMO_FAMILIES, "ARS", "by-person");
     if (!settlement) throw new Error("settlement esperado");
 
     return {
@@ -290,11 +283,10 @@ describe("closed events store", () => {
       createdAt: NOW,
       closedAt: NOW,
       totalAmount: settlement.totalAmount,
-      splitModeUsed: "by-family",
+      splitModeUsed: "by-person",
       familiesSnapshot: DEMO_FAMILIES,
       balancesSnapshot: settlement.balances,
       transfersSnapshot: settlement.transfers,
-      recommendationSnapshot: null,
     };
   }
 
@@ -339,8 +331,7 @@ describe("getDraftFingerprint", () => {
   it("cambia con el contenido y no con el momento de guardado", () => {
     const input = {
       eventData: { eventName: "A", currency: "ARS", splitMode: null, families: [] },
-      selectedMode: "by-family" as const,
-      recommendationAccepted: null,
+      selectedMode: "by-person" as const,
       createdAt: NOW,
     };
 
@@ -386,28 +377,34 @@ describe("computeCoverCrop", () => {
 });
 
 describe("getUnitShare", () => {
-  it("da la cuota por familia o por persona habilitada", async () => {
+  it("da lo que paga cada adulto", async () => {
     const { getUnitShare } = await import("@/lib/flow/eventInsights");
-    const byFamily = deriveSettlement(DEMO_FAMILIES, "ARS", "by-family");
-    const byPerson = deriveSettlement(DEMO_FAMILIES, "ARS", "by-person");
-    if (!byFamily || !byPerson) throw new Error("settlement esperado");
+    const full = deriveSettlement(DEMO_FAMILIES, "ARS", "by-person");
+    const zero = deriveSettlement(DEMO_FAMILIES, "ARS", "by-person-minors-zero");
+    if (!full || !zero) throw new Error("settlement esperado");
 
-    expect(getUnitShare(byFamily)).toBe(4000);
-    expect(getUnitShare(byPerson)).toBe(1600);
+    expect(getUnitShare(full)).toBe(1600);
+    expect(getUnitShare(zero)).toBe(2285.71);
   });
 });
 
 describe("deriveModeComparison", () => {
-  it("compara la cuota de cada familia habilitada con ambos criterios", async () => {
+  it("compara la cuota de cada familia con las tres respuestas sobre menores", async () => {
     const { deriveModeComparison } = await import("@/lib/flow/eventInsights");
     const rows = deriveModeComparison(DEMO_FAMILIES);
 
     expect(rows).toHaveLength(4);
+    // García: 2 adultos y 2 menores. 100%: 4 × 1.600. 50%: 8,5 porciones →
+    // 2 × 1.882,35 + 2 × 941,18. 0%: 16.000 ÷ 7 × 2.
     expect(rows[0]).toEqual({
       familyId: "demo-garcia",
       name: "Los García",
-      byFamily: 4000,
-      byPerson: 6400,
+      isSoloMinor: false,
+      shares: {
+        "by-person": 6400,
+        "by-person-minors-half": 5647.06,
+        "by-person-minors-zero": 4571.42,
+      },
     });
   });
 });
@@ -426,7 +423,6 @@ describe("buildClosedEvent", () => {
         eventData: { eventName: "  ", currency: "ARS", splitMode: "by-person", families: DEMO_FAMILIES },
       },
       settlement,
-      recommendation: null,
     });
 
     expect(event.eventName).toBe("Evento sin nombre");
@@ -480,11 +476,12 @@ describe("parseFamilyForm", () => {
       name: " Juli ",
       adults: 0,
       minors: 1,
+      paysOwnShare: false,
       items: [{ key: "1", description: "Globos", amount: "999" }],
     });
     expect(minor).toEqual({
       ok: true,
-      family: { name: "Juli", adults: 0, minors: 1, paidAmount: 0, items: undefined },
+      family: { name: "Juli", adults: 0, minors: 1, paysOwnShare: undefined, paidAmount: 0, items: undefined },
     });
     expect(parseAmount("2500,5")).toBe(2500.5);
     expect(parseAmount("-1")).toBeNull();

@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useState } from "react";
 import type { Family } from "@/types/family";
-import { isGuestFamily } from "@/lib/calculations/eligibility";
+import { isGuestFamily, isPayingSoloMinorFamily } from "@/lib/calculations/eligibility";
 import { describeComposition } from "@/lib/text/describeSplit";
 import { getContributionItems, getContributionLabel } from "@/lib/calculations/contributions";
 import { formatMoney } from "@/lib/formatting/formatCurrency";
@@ -86,6 +86,9 @@ export const FamilyCard = memo(function FamilyCard({
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h3 className="truncate text-lg font-bold">{family.name}</h3>
             {isGuest && <Badge variant="guest" />}
+            {isPayingSoloMinorFamily(family) && (
+              <Badge variant="neutral" label="Paga su tutor" />
+            )}
           </div>
           <p className="mt-0.5 flex items-center gap-2 text-sm text-ink-soft">
             {/* Adultos: puntos llenos. Menores: puntos chicos color mostaza. */}

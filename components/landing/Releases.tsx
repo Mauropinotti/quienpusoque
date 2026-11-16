@@ -5,7 +5,7 @@ import {
   formatReleaseMonth,
   releaseName,
 } from "@/lib/releases";
-import { DownloadIcon, UploadIcon } from "@/components/ui/icons";
+import { ArrowRightIcon } from "@/components/ui/icons";
 
 // Sección "Progreso": qué trae la versión actual y el historial de versiones.
 // Server Component: texto y CSS, sin JavaScript.
@@ -30,29 +30,7 @@ function Highlight({
   );
 }
 
-function ReceiptVisual() {
-  const lines = [
-    ["Carne", "$6.500"],
-    ["Carbón", "$1.500"],
-  ];
-  return (
-    <div className="rounded-lg border-2 border-ink bg-white px-3 py-2 font-mono text-xs">
-      {lines.map(([what, amount]) => (
-        <p key={what} className="flex items-baseline gap-2">
-          <span>{what}</span>
-          <span className="flex-1 translate-y-[-3px] border-b border-dotted border-ink/30" />
-          <span className="font-bold">{amount}</span>
-        </p>
-      ))}
-      <p className="mt-1 flex justify-between border-t-2 border-dashed border-ink/20 pt-1 font-black">
-        <span>Total</span>
-        <span>$8.000</span>
-      </p>
-    </div>
-  );
-}
-
-function MinorsVisual() {
+function PortionsVisual() {
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-3 rounded-lg border-2 border-ink bg-white p-0.5 text-center text-xs font-bold">
@@ -61,26 +39,49 @@ function MinorsVisual() {
         <span className="rounded-md px-2 py-1 text-muted">0%</span>
       </div>
       <div className="rounded-lg border-2 border-ink bg-white px-3 py-2 font-mono text-[11px] leading-relaxed">
-        <p>$12.000 ÷ 8 = $1.500 c/u</p>
-        <p>menor paga 50%: $750</p>
-        <p className="font-bold">adulto: $1.500 + $250 = $1.750</p>
+        <p>5 adultos × 1 + 3 menores × ½</p>
+        <p>= 6,5 porciones</p>
+        <p className="font-bold">$12.000 ÷ 6,5 = $1.846,15</p>
       </div>
     </div>
   );
 }
 
-function ExportVisual() {
+function OneParentVisual() {
+  const lines = [
+    ["1 adulta × 1", "$1.846,15"],
+    ["1 menor × ½", "$923,08"],
+  ];
   return (
-    <div className="flex items-center gap-2 font-mono text-xs">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-ink bg-white text-base">
-        <DownloadIcon />
+    <div className="rounded-lg border-2 border-ink bg-white px-3 py-2 font-mono text-xs">
+      <p className="mb-1 font-bold">Ana</p>
+      {lines.map(([what, amount]) => (
+        <p key={what} className="flex items-baseline gap-2">
+          <span>{what}</span>
+          <span className="flex-1 translate-y-[-3px] border-b border-dotted border-ink/30" />
+          <span className="font-bold">{amount}</span>
+        </p>
+      ))}
+      <p className="mt-1 flex justify-between border-t-2 border-dashed border-ink/20 pt-1 font-black">
+        <span>1,5 porciones</span>
+        <span>$2.769,23</span>
+      </p>
+    </div>
+  );
+}
+
+function GuardianVisual() {
+  return (
+    <div className="flex items-center gap-2 rounded-xl border-2 border-ink bg-paper px-3 py-2 text-xs">
+      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink font-mono text-[11px] font-bold text-paper">
+        1
       </span>
-      <span className="min-w-0 flex-1 truncate rounded-lg border-2 border-dashed border-ink bg-white px-2 py-2 font-bold">
-        asado-del-sabado.json
-      </span>
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-ink bg-sky-soft text-base">
-        <UploadIcon />
-      </span>
+      <p className="min-w-0 flex-1 leading-tight">
+        <span className="font-bold">Padre/madre o tutor encargado de Juli</span>
+        <ArrowRightIcon className="mx-1 inline-block align-[-2px] text-ember-text" />
+        <span className="font-bold">Los Pérez</span>
+      </p>
+      <span className="font-mono font-black">$923</span>
     </div>
   );
 }
@@ -102,8 +103,9 @@ export function Releases() {
           Lo nuevo en la V{current.version}.
         </h2>
         <p className="mt-4 text-lg leading-relaxed text-ink-soft">
-          Cada versión deja la cuenta más clara. Esta muestra qué puso cada uno,
-          cuánto pagan los menores y cómo se llegó a cada número.
+          Cada versión deja la cuenta más clara. Esta reparte todo por porciones:
+          un solo criterio, sin sugerencias, que cubre familias con chicos,
+          adultos solos y menores que vinieron por su cuenta.
         </p>
       </div>
 
@@ -119,23 +121,23 @@ export function Releases() {
         <p className="mt-2 text-lg font-bold text-paper/85">{current.title}</p>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <Highlight title="Cada cosa con su monto" visual={<ReceiptVisual />}>
-            Cargás qué puso cada uno y cuánto salió. La app suma el total y lo
-            muestra en el ticket, el PDF y el WhatsApp.
+          <Highlight title="Por porciones" visual={<PortionsVisual />}>
+            Cada adulto es una porción y cada menor cuenta entera, media o nada.
+            El total se divide por las porciones: nadie paga lo que no paga otro.
           </Highlight>
-          <Highlight title="Menores al 100, 50 o 0%" visual={<MinorsVisual />}>
-            Contás adultos y menores. Por persona, ustedes eligen cuánto pagan
-            los menores, y la cuenta queda paso a paso a la vista.
+          <Highlight title="El caso 1 + 1, resuelto" visual={<OneParentVisual />}>
+            Una mamá o un papá con su hijo paga 1,5 porciones: el menor paga
+            exactamente la mitad que un adulto.
           </Highlight>
-          <Highlight title="Exportá y seguí después" visual={<ExportVisual />}>
-            Bajás un archivo con todo lo cargado y lo importás en el paso 1, en
-            este celular o en otro.
+          <Highlight title="Menores solos, con su tutor" visual={<GuardianVisual />}>
+            Si un menor vino solo y paga su parte, la cuenta lo marca y transfiere
+            su padre, madre o tutor.
           </Highlight>
         </div>
       </div>
 
       <h3 className="font-display mt-14 text-3xl sm:text-4xl">Versiones</h3>
-      <ol className="mt-5 grid gap-4 md:grid-cols-3" aria-label="Historial de versiones">
+      <ol className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4" aria-label="Historial de versiones">
         {RELEASES.map((release) => {
           const isCurrent = release.version === current.version;
           return (

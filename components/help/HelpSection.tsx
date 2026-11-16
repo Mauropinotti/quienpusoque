@@ -38,7 +38,7 @@ export function HelpSection() {
         <p>Para cada familia o grupo participante indicás:</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>nombre</li>
-          <li>cuántos adultos y cuántos menores son</li>
+          <li>cuántos adultos y cuántos menores son (y, si vinieron menores solos, si pagan su parte)</li>
           <li>qué puso y cuánto salió cada cosa</li>
         </ul>
         <p>
@@ -66,71 +66,50 @@ export function HelpSection() {
           la mitad o nada).
         </p>
         <p>
-          Una familia <strong>sin adultos</strong> (por ejemplo, un chico que vino
-          solo) queda como invitada: no paga, no cobra y su monto queda fijo en $0.
+          Si vinieron <strong>menores solos</strong> (sin adultos), marcás si{" "}
+          <strong>van a pagar su parte</strong>: la paga su padre, madre o tutor, y
+          en el ticket aparece así: “Padre/madre o tutor encargado de Juli le
+          transfiere…”. Si no la marcás, quedan invitados: no pagan ni cobran.
         </p>
       </HelpStepCard>
 
       <EligibilityCriteriaCard />
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <HelpStepCard number="03a" title="Por familia">
-          <p>
-            Cada familia habilitada paga la misma parte. Suele servir cuando los
-            grupos tienen tamaños parecidos.
-          </p>
-          <p className="font-mono text-sm">$100.000 ÷ 10 familias = $10.000 c/u</p>
-        </HelpStepCard>
-        <HelpStepCard number="03b" title="Por persona">
-          <p>
-            Cada persona cuenta como una parte. Suele ser más justo con familias
-            chicas y grandes. La app te pregunta cómo pagan los menores.
-          </p>
-          <p className="font-mono text-sm">$100.000 ÷ 20 personas = $5.000 · familia de 4: $20.000</p>
-        </HelpStepCard>
-      </div>
-
-      <HelpStepCard title="¿Cómo pagan los menores?" tone="sky">
-        <p>Si repartís por persona y hay menores, elegís una de tres opciones:</p>
+      <HelpStepCard number="03" title="¿Cómo pagan los menores?" tone="sky">
+        <p>
+          Todo se reparte <strong>por porciones</strong>: cada adulto cuenta una
+          porción entera y cada menor, la parte que elijan:
+        </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            <strong>Igual que los adultos (100%).</strong> Todos pagan una parte
-            igual del total.
+            <strong>Igual que un adulto (100%).</strong> Cada menor es una porción
+            entera: todos pagan lo mismo.
           </li>
           <li>
-            <strong>La mitad (50%).</strong> Cada menor paga la mitad de la parte
-            por persona. Lo que no pagan entre todos los menores se reparte en
-            partes iguales entre los adultos.
+            <strong>La mitad (50%).</strong> Cada menor es media porción: paga la
+            mitad que un adulto.
           </li>
           <li>
-            <strong>No pagan (0%).</strong> El total se divide solo entre los
-            adultos.
+            <strong>No pagan (0%).</strong> Los menores no cuentan: el total se
+            divide entre los adultos.
           </li>
         </ul>
+        <p>El total se divide por la cantidad de porciones y eso paga cada adulto.</p>
         <p className="font-mono text-sm leading-relaxed">
-          $12.000, 6 adultos y 2 menores, menores al 50%:
+          $12.000 · Los Pérez (2 adultos), Ana (1 adulta y 1 menor), Los Gómez
+          (2 adultos y 2 menores), menores al 50%:
           <br />
-          $12.000 ÷ 8 = $1.500 por persona
+          5 adultos × 1 + 3 menores × ½ = 6,5 porciones
           <br />
-          cada menor paga $750 · los 2 menores dejan $1.500
+          $12.000 ÷ 6,5 = $1.846,15 por adulto · $923,08 por menor
           <br />
-          $1.500 ÷ 6 adultos = $250 más · cada adulto paga $1.750
+          Ana: $1.846,15 + $923,08 = $2.769,23
         </p>
         <p>
-          El ticket, el PDF y el WhatsApp muestran esta cuenta paso a paso, y lo
-          que le toca a cada familia.
+          Nadie paga “lo que no paga otro”: todos pagan el mismo precio por
+          porción. El ticket, el PDF y el WhatsApp muestran esta cuenta paso a
+          paso, y lo que le toca a cada familia.
         </p>
-      </HelpStepCard>
-
-      <HelpStepCard title="Criterio sugerido">
-        <p>
-          La app sugiere si conviene repartir por familia o por persona (cuánto
-          pagan los menores lo deciden ustedes). Mira
-          cuántas familias participan, cuántas personas hay, cuántas familias son
-          de un solo adulto, cuántas son grandes y qué diferencia económica hay
-          entre los dos criterios.
-        </p>
-        <p>La sugerencia no es obligatoria. Siempre podés elegir manualmente.</p>
       </HelpStepCard>
 
       <HelpStepCard number="04" title="Balances y transferencias">

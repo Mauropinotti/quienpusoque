@@ -38,13 +38,15 @@ function getContributionLines(
   currency: string
 ): string[] {
   const contributions = buildContributionsById(families);
+  const soloMinorIds = getSoloMinorIds(families);
   const lines: string[] = [];
 
   for (const balance of balances) {
     if (balance.status === "guest") continue;
 
     const items = contributions.get(balance.familyId) ?? [];
-    const total = `- ${balance.name}: ${formatMoney(balance.paidAmount, currency)}`;
+    const name = soloMinorIds.has(balance.familyId) ? `${balance.name} (menor solo)` : balance.name;
+    const total = `- ${name}: ${formatMoney(balance.paidAmount, currency)}`;
 
     if (items.length === 1) {
       lines.push(`${total} (${getContributionLabel(items[0])})`);

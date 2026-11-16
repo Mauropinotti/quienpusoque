@@ -138,10 +138,12 @@ function parsePayload(value: unknown): ClosedEvent[] {
   // Las familias de versiones anteriores se pasan al formato actual. La
   // sugerencia que guardaban hasta V1.2 ya no se usa: se descarta.
   return events.filter(isValidClosedEvent).map((event) => {
-    const { recommendationSnapshot: _legacy, ...rest } = event as ClosedEvent & {
-      recommendationSnapshot?: unknown;
+    const current: ClosedEvent & { recommendationSnapshot?: unknown } = {
+      ...event,
+      familiesSnapshot: event.familiesSnapshot.map(normalizeFamily),
     };
-    return { ...rest, familiesSnapshot: event.familiesSnapshot.map(normalizeFamily) };
+    delete current.recommendationSnapshot;
+    return current;
   });
 }
 

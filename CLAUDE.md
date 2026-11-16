@@ -20,7 +20,7 @@ components/calculator/      CalculatorApp (estado y flujo), fallback, stepper
 components/layout/          header, footer, marca
 components/event/           setup y foto opcional
 components/families/        alta, edición, eliminación y listado
-components/recommendation/  recomendación y selector de criterio
+components/criterion/       paso 3: cómo pagan los menores (porciones) y comparación
 components/results/         ticket (SettlementTicket), PDF, WhatsApp
 components/history/         historial de cuentas cerradas
 components/help/            ayuda visible para usuarios finales
@@ -47,7 +47,7 @@ docs/                       documentación técnica y de producto
 ```text
 components/calculator/CalculatorApp.tsx
   useReducer(eventFlowReducer)            lib/flow/eventFlow.ts
-  deriveEventInsights(families)           elegibilidad + recomendación
+  deriveEventInsights(families)           elegibilidad y conteos (adultos, menores)
   deriveSettlement(families, mode)        calculateBalances + calculateTransfers
   -> componentes por props (memo, callbacks estables con dispatch)
 ```
@@ -55,12 +55,10 @@ components/calculator/CalculatorApp.tsx
 ## Reglas clave
 
 - Cada familia tiene `adults` y `minors` explícitos (0 a 20, al menos una persona).
-- Con al menos 1 adulto aporta; sin adultos no aporta y sus menores no cuentan.
-- `by-family`: partes iguales por familia que aporta.
-- `by-person`: partes iguales por persona (adultos y menores igual).
-- `by-person-minors-half`: cada menor paga 50% de la parte por persona; lo que no pagan se reparte en partes iguales entre los adultos.
-- `by-person-minors-zero`: total ÷ adultos; los menores no pagan.
-- Los pasos salen de `calculateShareBreakdown` (`SplitBreakdown`) y sus textos de `lib/text/describeSplit.ts`: ticket, PDF y WhatsApp los muestran iguales. La recomendación elige la base (`SplitBasis`), no cuánto pagan los menores.
+- Con al menos 1 adulto la familia entra en la cuenta. Sin adultos (menores solos) entra solo con `paysOwnShare` (paga su padre, madre o tutor); si no, es invitada.
+- Un solo criterio, por persona, por **porciones**: adulto = 1, menor = 1 (`by-person`), ½ (`by-person-minors-half`) o 0 (`by-person-minors-zero`). Precio por porción = total ÷ porciones = lo que paga cada adulto; cada menor paga precio × fracción.
+- No hay sugerencia automática ni reparto "por familia" (se quitaron en V1.3). `by-family` solo existe como `LegacySplitMode` para leer el historial.
+- Los pasos salen de `calculateShareBreakdown` (`SplitBreakdown`) y sus textos de `lib/text/describeSplit.ts`: ticket, PDF y WhatsApp los muestran iguales. Un menor solo no transfiere: aparece "padre/madre o tutor encargado de X" (`describeTransfer`).
 - `balance = paidAmount - expectedShare`.
 - `status` lo calcula `calculateBalances`; la UI no lo recalcula.
 - `paidAmount = suma de items[].amount` (`lib/calculations/contributions.ts`). El total no se tipea: lo calcula `lib/forms` al cargar y `normalizeFamily` al leer storage o un archivo importado.
@@ -69,7 +67,7 @@ components/calculator/CalculatorApp.tsx
 
 - Derivados en `useMemo` con dependencias exactas; no depender de `eventData` completo.
 - Callbacks con `dispatch`; componentes de lista y pasos con `memo`.
-- Recomendación, resultados e historial se cargan con `next/dynamic`.
+- Paso de criterio, resultados e historial se cargan con `next/dynamic`.
 - jsPDF solo con `import()` dinámico; nunca importarlo desde la UI.
 - Medir antes y después: `docs/performance.md`.
 
@@ -85,7 +83,7 @@ Usar siempre `lib/storage/browserStorage.ts` (sondeo cacheado). El borrador se e
 
 ## Exportar / importar
 
-El cálculo en curso se exporta como `.json` (`format: "quien-puso-que/calculo"`, `version: 2`; la 1 se sigue leyendo) y se importa desde el paso 1. `lib/exchange/eventFile.ts` valida el archivo entero antes de tocar el estado: o entra todo o no entra nada. Si cambia el formato, subir `version` y aceptar las anteriores. No incluye foto ni historial. Detalle en `docs/ux-flow.md`.
+El cálculo en curso se exporta como `.json` (`format: "quien-puso-que/calculo"`, `version: 3`; la 1 y la 2 se siguen leyendo) y se importa desde el paso 1. `lib/exchange/eventFile.ts` valida el archivo entero antes de tocar el estado: o entra todo o no entra nada. Si cambia el formato, subir `version` y aceptar las anteriores. No incluye foto ni historial. Detalle en `docs/ux-flow.md`.
 
 ## PDF final
 

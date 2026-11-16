@@ -24,13 +24,12 @@ import { StepIndicator } from "./StepIndicator";
 import { StepSkeleton } from "./CalculatorSkeleton";
 
 // Pasos pesados en chunks aparte: el primer paint solo necesita setup/familias.
-const loadRecommendationStep = () =>
-  import("@/components/recommendation/RecommendationStep");
+const loadCriterionStep = () => import("@/components/criterion/CriterionStep");
 const loadResultsStep = () => import("@/components/results/ResultsStep");
 const loadHistory = () => import("@/components/history/EventHistoryList");
 
-const RecommendationStep = dynamic(
-  () => loadRecommendationStep().then((m) => m.RecommendationStep),
+const CriterionStep = dynamic(
+  () => loadCriterionStep().then((m) => m.CriterionStep),
   { loading: () => <StepSkeleton /> }
 );
 const ResultsStep = dynamic(() => loadResultsStep().then((m) => m.ResultsStep), {
@@ -52,7 +51,7 @@ const HISTORY_SAVE_ERROR =
 function usePreloadNextSteps() {
   useEffect(() => {
     const preload = () => {
-      void loadRecommendationStep();
+      void loadCriterionStep();
       void loadResultsStep();
     };
 
@@ -78,7 +77,6 @@ export function CalculatorApp() {
     eventData,
     createdAt,
     selectedMode,
-    recommendationAccepted,
     savedClosedEventId,
     historySaveError,
     ticketPhoto,
@@ -88,7 +86,6 @@ export function CalculatorApp() {
   const { clearDraft } = useEventDraft({
     eventData,
     selectedMode,
-    recommendationAccepted,
     createdAt,
     storedFingerprint: boot.storedFingerprint,
   });
@@ -110,13 +107,12 @@ export function CalculatorApp() {
   }, [step]);
 
   // Derivados con dependencias exactas: tipear el nombre del evento ya no
-  // recalcula elegibilidad, recomendación ni balances.
+  // recalcula elegibilidad, conteos ni balances.
   const insights = useMemo(() => deriveEventInsights(families), [families]);
   const settlement = useMemo(
     () => deriveSettlement(families, currency, splitMode),
     [currency, families, splitMode]
   );
-  const { recommendation } = insights;
 
   // dispatch es estable: estos callbacks no cambian entre renders y los
   // componentes memoizados no se re-renderizan de más.
@@ -140,8 +136,8 @@ export function CalculatorApp() {
   );
   const getSnapshot = useCallback(
     () =>
-      buildEventSnapshot({ eventData, selectedMode, recommendationAccepted, createdAt }),
-    [createdAt, eventData, recommendationAccepted, selectedMode]
+      buildEventSnapshot({ eventData, selectedMode, createdAt }),
+    [createdAt, eventData, selectedMode]
   );
   const handleAddFamily = useCallback(
     (data: Omit<Family, "id">) =>
@@ -166,17 +162,13 @@ export function CalculatorApp() {
     []
   );
 
-  const recommendedMode = recommendation?.recommendedMode ?? null;
-
-  const handleOpenRecommendation = useCallback(() => {
-    if (recommendedMode) {
-      dispatch({ type: "recommendation-opened", recommendedMode });
-    }
-  }, [recommendedMode]);
-
+  const handleOpenCriterion = useCallback(
+    () => dispatch({ type: "criterion-opened" }),
+    []
+  );
   const handleConfirmMode = useCallback(
-    () => dispatch({ type: "mode-confirmed", recommendedMode }),
-    [recommendedMode]
+    () => dispatch({ type: "mode-confirmed" }),
+    []
   );
 
   const handleSaveClosedEvent = useCallback(() => {
@@ -187,7 +179,6 @@ export function CalculatorApp() {
       closedAt: new Date().toISOString(),
       state: { eventData, createdAt },
       settlement,
-      recommendation,
     });
 
     const result = saveClosedEvent(closedEvent);
@@ -196,7 +187,7 @@ export function CalculatorApp() {
         ? { type: "closed-event-saved", id: closedEvent.id }
         : { type: "closed-event-save-failed", message: HISTORY_SAVE_ERROR }
     );
-  }, [createdAt, eventData, recommendation, settlement]);
+  }, [createdAt, eventData, settlement]);
 
   const handleReset = useCallback(() => {
     clearDraft();
@@ -249,20 +240,18 @@ export function CalculatorApp() {
               currency={currency}
               onRemove={handleRemoveFamily}
               onUpdate={handleUpdateFamily}
-              onCalculate={handleOpenRecommendation}
+              onCalculate={handleOpenCriterion}
               headerAction={exportAction}
             />
           </>
         )}
 
-        {step === "recommendation" && recommendation && (
-          <RecommendationStep
+        {step === "criterion" && insights.canCalculate && (
+          <CriterionStep
             eventName={eventName}
             families={families}
             currency={currency}
-            recommendation={recommendation}
-            adultCount={insights.adultCount}
-            minorCount={insights.minorCount}
+            insights={insights}
             selectedMode={selectedMode}
             onModeChange={handleModeChange}
             onConfirm={handleConfirmMode}
@@ -276,7 +265,6 @@ export function CalculatorApp() {
             currency={currency}
             families={families}
             settlement={settlement}
-            recommendation={recommendation}
             ticketPhoto={ticketPhoto}
             isSavedToHistory={savedClosedEventId !== null}
             historySaveError={historySaveError}
@@ -289,7 +277,7 @@ export function CalculatorApp() {
         )}
 
         {/* Un borrador viejo puede apuntar a un paso que ya no se puede mostrar. */}
-        {((step === "recommendation" && !recommendation) ||
+        {((step === "criterion" && !insights.canCalculate) ||
           (step === "results" && !settlement)) && (
           <StepHeader
             kicker="Ups"

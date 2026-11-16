@@ -56,25 +56,18 @@ function FamilyChipsVisual() {
   );
 }
 
-function ModeToggleVisual() {
+function MinorsVisual() {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 rounded-xl border-2 border-ink bg-white p-1 text-sm font-bold">
-        <span className="rounded-lg px-3 py-2 text-center text-muted">Por familia</span>
-        <span className="rounded-lg bg-ember px-3 py-2 text-center">Por persona ✓</span>
+      <div className="grid grid-cols-3 rounded-xl border-2 border-ink bg-white p-1 text-sm font-bold">
+        <span className="rounded-lg px-2 py-2 text-center text-muted">100%</span>
+        <span className="rounded-lg bg-ember px-2 py-2 text-center">50% ✓</span>
+        <span className="rounded-lg px-2 py-2 text-center text-muted">0%</span>
       </div>
-      <div className="space-y-1.5 font-mono text-xs">
-        {[
-          ["García", "w-[88%]"],
-          ["Fernández", "w-[66%]"],
-          ["Rodríguez", "w-[44%]"],
-          ["López", "w-[22%]"],
-        ].map(([name, width]) => (
-          <div key={name} className="flex items-center gap-2">
-            <span className="w-20 shrink-0">{name}</span>
-            <span className={`h-3 rounded-full border-[1.5px] border-ink bg-sky ${width}`} />
-          </div>
-        ))}
+      <div className="rounded-xl border-2 border-ink bg-white px-3 py-2 font-mono text-xs leading-relaxed">
+        <p>5 adultos × 1 + 3 menores × ½</p>
+        <p>= 6,5 porciones</p>
+        <p className="font-bold">adulto $1.846 · menor $923</p>
       </div>
     </div>
   );
@@ -86,8 +79,8 @@ function ChatVisual() {
       <div className="ml-auto max-w-[92%] rounded-2xl rounded-br-sm border-2 border-ink bg-[#dcf8c6] px-3.5 py-2.5 font-mono text-[12px] leading-relaxed">
         <p className="font-bold">Asado del sábado</p>
         <p>Gasto total: $16.000</p>
-        <p>- Los López → Los García $4.000</p>
-        <p>- Los Rodríguez → Los Fernández $1.000</p>
+        <p>- Los López → Los García $1.600</p>
+        <p>- Los Rodríguez → Los Fernández $200</p>
       </div>
       <div className="flex justify-end gap-2 text-xs font-bold">
         <span className="rounded-full border-2 border-ink bg-white px-2.5 py-0.5">Ticket PDF</span>
@@ -125,13 +118,13 @@ export function HowItWorks() {
         </StepCard>
         <StepCard
           number="02"
-          title="Te sugerimos cómo repartir"
-          visual={<ModeToggleVisual />}
+          title="Elegí cuánto pagan los menores"
+          visual={<MinorsVisual />}
           className="bg-sky-soft"
           tilt="lg:translate-y-6"
         >
-          ¿Por familia o por persona? ¿Los menores pagan todo, la mitad o nada?
-          Te recomendamos y te explicamos la cuenta. La última palabra es tuya.
+          Se reparte por porciones: cada adulto es una, y cada menor cuenta
+          entera, media o nada, como decidan. La cuenta queda a la vista.
         </StepCard>
         <StepCard
           number="03"
